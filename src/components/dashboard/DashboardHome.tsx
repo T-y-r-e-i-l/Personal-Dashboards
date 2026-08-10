@@ -1,0 +1,218 @@
+"use client";
+
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import type { Layout } from "react-grid-layout";
+import { createClient } from "@/lib/supabase/client";
+import type { Dashboard, DashboardPanel, Profile } from "@/lib/database.types";
+import { PANEL_META, type PanelConfig, type PanelType } from "@/lib/panels/types";
+import { timeOfDayGreeting } from "@/lib/utils/greeting";
+import { QuickCapture } from "@/components/capture/QuickCapture";
+import { DashboardGrid } from "@/components/dashboard/DashboardGrid";
+import { useToast } from "@/components/ui/Toast";
+
+export function DashboardHome({
+  userId,
+  initialProfile,
+  initialDashboards,
+  initialPanels,
+}: {
+  userId: string;
+  initialProfile: Profile | null;
+  initialDashboards: Dashboard[];
+  initialPanels: DashboardPanel[];
+}) {
+  const router = useRouter();
+  const showToast = useToast((s) => s.show);
+  const supabase = useMemo(() => createClient(), []);
+  const [dashboards, setDashboards] = useState(initialDashboards);
+  const [activeId, setActiveId] = useState(
+    initialDashboards.find((d) => d.is_default)?.id ??
+      initialDashboards[0]?.id ??
+      null,
+  );
+  const [panels, setPanels] = useState(initialPanels);
+  const [addingOpen, setAddingOpen] = useState(false);
+
+  useEffect(() => {
+    if (!initialProfile?.onboarding_completed && dashboards.length === 0) {
+      router.replace("/onboarding");
+    }
+  }, [initialProfile, dashboards.length, router]);
+
+  useEffect(() => {
+    if (!activeId) return;
+    void (async () => {
+      const { data } = await supabase
+        .from("dashboard_panels")
+        .select("*")
+        .eq("dashboard_id", activeId)
+        .order("y", { ascending: true });
+      setPanels(data ?? []);
+    })();
+  }, [activeId, supabase]);
+
+  const persistLayout = useCallback(
+    async (layout: Layout) => {
+      setPanels((prev) =>
+        prev.map((p) => {
+          const item = layout.find((l) => l.i === p.id);
+          if (!item) return p;
+          return { ...p, x: item.x, y: item.y, w: item.w, h: item.h };
+        }),
+      );
+
+      await Promise.all(
+        layout.map((item) =>
+          supabase
+            .from("dashboard_panels")
+            .update({
+              x: item.x,
+              y: item.y,
+              w: item.w,
+              h: item.h,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", item.i),
+        ),
+      );
+    },
+    [supabase],
+  );
+
+  const debouncedPersist = useMemo(() => {
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    return (layout: Layout) => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => {
+        void persistLayout(layout);
+      }, 400);
+    };
+  }, [persistLayout]);
+
+  async function addPanel(type: PanelType) {
+    if (!activeId) return;
+    const meta = PANEL_META[type];
+    const maxY = panels.reduce((acc, p) => Math.max(acc, p.y + p.h), 0);
+    const { data, error } = await supabase
+      .from("dashboard_panels")
+      .insert({
+        dashboard_id: activeId,
+        user_id: userId,
+        panel_type: type,
+        x: 0,
+        y: maxY,
+        w: meta.defaultW,
+        h: meta.defaultH,
+        config: {},
+      })
+      .select()
+      .single();
+
+    if (error || !data) {
+      showToast(error?.message ?? "Could not add panel");
+      return;
+    }
+    setPanels((prev) => [...prev, data]);
+    setAddingOpen(false);
+  }
+
+  async function removePanel(panelId: string) {
+    const { error } = await supabase
+      .from("dashboard_panels")
+      .delete()
+      .eq("id", panelId);
+    if (error) {
+      showToast(error.message);
+      return;
+    }
+    setPanels((prev) => prev.filter((p) => p.id !== panelId));
+  }
+
+  async function updateConfig(panelId: string, config: PanelConfig) {
+    const { error } = await supabase
+      .from("dashboard_panels")
+      .update({ config, updated_at: new Date().toISOString() })
+      .eq("id", panelId);
+    if (error) {
+      showToast(error.message);
+      return;
+    }
+    setPanels((prev) =>
+      prev.map((p) => (p.id === panelId ? { ...p, config } : p)),
+    );
+    showToast("Panel updated");
+  }
+
+  const firstName =
+    initialProfile?.display_name?.split(" ")[0] ??
+    "there";
+
+  return (
+    <main className="mx-auto w-full max-w-6xl px-4 py-8 md:px-8">
+      <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <p className="text-sm text-[var(--muted)]">Today</p>
+          <h1 className="font-[family-name:var(--font-display)] text-4xl tracking-tight md:text-5xl">
+            {timeOfDayGreeting()}, {firstName}
+          </h1>
+          <p className="mt-2 text-sm text-[var(--muted)]">
+            Capture first. Then shape the rest of your day.
+          </p>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          {dashboards.length > 1 ? (
+            <select
+              value={activeId ?? ""}
+              onChange={(e) => setActiveId(e.target.value)}
+              className="rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm"
+            >
+              {dashboards.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.name}
+                </option>
+              ))}
+            </select>
+          ) : null}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setAddingOpen((v) => !v)}
+              className="rounded-full bg-[var(--ink)] px-4 py-2 text-sm font-medium text-[var(--canvas)]"
+            >
+              Add panel
+            </button>
+            {addingOpen ? (
+              <div className="absolute right-0 z-20 mt-2 w-56 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-2 shadow-lg">
+                {(Object.keys(PANEL_META) as PanelType[]).map((type) => (
+                  <button
+                    key={type}
+                    type="button"
+                    onClick={() => void addPanel(type)}
+                    className="block w-full rounded-xl px-3 py-2 text-left text-sm hover:bg-[var(--surface-soft)]"
+                  >
+                    {PANEL_META[type].label}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+          </div>
+        </div>
+      </div>
+
+      <div className="mb-10">
+        <QuickCapture userId={userId} />
+      </div>
+
+      <DashboardGrid
+        userId={userId}
+        location={initialProfile?.location ?? null}
+        panels={panels}
+        onLayoutChange={debouncedPersist}
+        onRemovePanel={(id) => void removePanel(id)}
+        onUpdateConfig={(id, config) => void updateConfig(id, config)}
+      />
+    </main>
+  );
+}

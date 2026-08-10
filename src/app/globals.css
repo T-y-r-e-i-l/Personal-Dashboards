@@ -1,0 +1,104 @@
+@import "tailwindcss";
+@import "react-grid-layout/css/styles.css";
+@import "react-resizable/css/styles.css";
+
+:root {
+  --canvas: #f6f4ef;
+  --surface: #ffffff;
+  --surface-soft: #eceae4;
+  --ink: #161616;
+  --muted: #6b6b66;
+  --accent: #3d6b5a;
+  --accent-soft: #d7e5de;
+  --border: #e4e1d8;
+  --danger: #b42318;
+  --radius-panel: 20px;
+  --shadow-soft: 0 1px 2px rgba(22, 22, 22, 0.04),
+    0 8px 24px rgba(22, 22, 22, 0.04);
+}
+
+@theme inline {
+  --color-background: var(--canvas);
+  --color-foreground: var(--ink);
+  --font-sans: var(--font-body);
+  --font-serif: var(--font-display);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  background: var(--canvas);
+  color: var(--ink);
+  font-family: var(--font-body), ui-sans-serif, sans-serif;
+}
+
+::selection {
+  background: var(--accent-soft);
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes panel-settle {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes capture-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(61, 107, 90, 0.35);
+  }
+  100% {
+    box-shadow: 0 0 0 12px rgba(61, 107, 90, 0);
+  }
+}
+
+.animate-fade-up {
+  animation: fade-up 0.35s ease-out both;
+}
+
+.animate-panel-settle {
+  animation: panel-settle 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.capture-success {
+  animation: capture-pulse 0.6s ease-out;
+}
+
+.react-grid-item.react-grid-placeholder {
+  background: var(--accent-soft) !important;
+  border-radius: var(--radius-panel);
+  opacity: 0.55;
+}
+
+.react-grid-item > .react-resizable-handle::after {
+  border-color: var(--muted) !important;
+}
+
+.panel-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-soft);
+}
