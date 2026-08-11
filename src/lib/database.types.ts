@@ -14,7 +14,10 @@ export type PanelType =
   | "water"
   | "weather"
   | "calendar"
-  | "time";
+  | "time"
+  | "sleep";
+
+export type SleepRating = "poor" | "fair" | "good" | "excellent";
 
 export type Database = {
   public: {
@@ -314,6 +317,33 @@ export type Database = {
         };
         Update: Partial<Database["public"]["Tables"]["time_entries"]["Insert"]>;
       };
+      sleep_logs: {
+        Row: {
+          id: string;
+          user_id: string;
+          sleep_date: string;
+          started_at: string;
+          ended_at: string;
+          duration_minutes: number;
+          score: number;
+          rating: SleepRating;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          sleep_date: string;
+          started_at: string;
+          ended_at: string;
+          duration_minutes: number;
+          score: number;
+          rating: SleepRating;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["sleep_logs"]["Insert"]>;
+      };
     };
   };
 };
@@ -334,3 +364,4 @@ export type WaterLog = Database["public"]["Tables"]["water_logs"]["Row"];
 export type CalendarEvent =
   Database["public"]["Tables"]["calendar_events"]["Row"];
 export type TimeEntry = Database["public"]["Tables"]["time_entries"]["Row"];
+export type SleepLog = Database["public"]["Tables"]["sleep_logs"]["Row"];

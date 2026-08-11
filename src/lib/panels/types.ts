@@ -54,6 +54,12 @@ export const PANEL_META: Record<
     defaultH: 3,
     description: "Track focus time, optionally linked to to-dos",
   },
+  sleep: {
+    label: "Sleep",
+    defaultW: 3,
+    defaultH: 3,
+    description: "Last night's sleep start, end, duration, score, and rating",
+  },
 };
 
 export type PanelConfig = {
