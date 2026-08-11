@@ -577,7 +577,7 @@ function CaptureListItem({
   }
 
   return (
-    <li className="group flex flex-col gap-2 border-y border-[var(--border)] py-4">
+    <li className="group flex flex-col gap-2 border-t border-[var(--border)] py-4">
       <div className="flex w-full shrink-0 items-center justify-between gap-3 font-[family-name:var(--font-body)] text-sm font-normal">
         <time className="text-xs text-[var(--muted)]">
           {format(new Date(stamp), "MMM d · h:mm a")}
