@@ -14,8 +14,8 @@ export const PANEL_META: Record<
   },
   habits: {
     label: "Habits",
-    defaultW: 4,
-    defaultH: 3,
+    defaultW: 6,
+    defaultH: 4,
     description: "Daily habits and streaks",
   },
   mood: {
@@ -57,7 +57,8 @@ export const PANEL_META: Record<
 };
 
 export type PanelConfig = {
-  dateRange?: "7d" | "30d" | "90d";
+  /** Mood: 7d/30d/90d. Habits: 7d/30d/6m/1y (90d treated as 6m). */
+  dateRange?: "7d" | "30d" | "90d" | "6m" | "1y";
   showCompleted?: boolean;
   location?: string;
 };

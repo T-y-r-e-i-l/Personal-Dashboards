@@ -77,6 +77,7 @@ create table if not exists public.habits (
   user_id uuid not null references auth.users (id) on delete cascade,
   name text not null,
   active boolean not null default true,
+  sort_order integer not null default 0,
   created_at timestamptz not null default now()
 );
 

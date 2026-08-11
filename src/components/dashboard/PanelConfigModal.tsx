@@ -3,18 +3,21 @@
 import { useState } from "react";
 import type { PanelConfig, PanelType } from "@/lib/panels/types";
 import { PANEL_META } from "@/lib/panels/types";
+import { HabitsSettingsList } from "@/components/dashboard/HabitsSettingsList";
 
 const ALL_PANEL_TYPES = Object.keys(PANEL_META) as PanelType[];
 
 export function PanelConfigModal({
   panelType,
   initial,
+  userId,
   onClose,
   onSave,
   onSwap,
 }: {
   panelType: PanelType;
   initial: PanelConfig;
+  userId: string;
   onClose: () => void;
   onSave: (config: PanelConfig) => void;
   onSwap: (type: PanelType) => void;
@@ -40,7 +43,35 @@ export function PanelConfigModal({
         <p className="mt-1 text-sm text-[var(--muted)]">{meta.description}</p>
 
         <div className="mt-6 space-y-4">
-          {(panelType === "habits" || panelType === "mood") && (
+          {panelType === "habits" && (
+            <>
+              <HabitsSettingsList userId={userId} />
+              <label className="block text-sm">
+                <span className="mb-1.5 block font-medium">Default view</span>
+                <select
+                  value={
+                    config.dateRange === "90d"
+                      ? "6m"
+                      : (config.dateRange ?? "7d")
+                  }
+                  onChange={(e) =>
+                    setConfig((c) => ({
+                      ...c,
+                      dateRange: e.target.value as PanelConfig["dateRange"],
+                    }))
+                  }
+                  className="w-full rounded-xl border border-[var(--border)] px-3 py-2"
+                >
+                  <option value="7d">Last 7 days</option>
+                  <option value="30d">Last 30 days</option>
+                  <option value="6m">Last 6 months</option>
+                  <option value="1y">Last year</option>
+                </select>
+              </label>
+            </>
+          )}
+
+          {panelType === "mood" && (
             <label className="block text-sm">
               <span className="mb-1.5 block font-medium">Date range</span>
               <select

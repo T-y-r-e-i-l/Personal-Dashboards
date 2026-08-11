@@ -56,7 +56,7 @@ function renderPanel(
     case "tasks":
       return <TasksPanel {...common} />;
     case "habits":
-      return <HabitsPanel {...common} />;
+      return <HabitsPanel {...common} config={config} />;
     case "mood":
       return <MoodPanel {...common} />;
     case "priorities":
@@ -231,7 +231,8 @@ export function DashboardGrid({
           dragConfig={{
             enabled: !readOnly,
             handle: ".panel-drag-handle",
-            cancel: "button, input, textarea, select, a, .task-drag-handle",
+            cancel:
+              "button, input, textarea, select, a, .task-drag-handle, .habit-drag-handle",
           }}
           resizeConfig={{
             enabled: !readOnly,
@@ -292,6 +293,7 @@ export function DashboardGrid({
         <PanelConfigModal
           panelType={configuring.panel_type as PanelType}
           initial={(configuring.config ?? {}) as PanelConfig}
+          userId={userId}
           onClose={() => setConfigPanelId(null)}
           onSave={(config) => {
             onUpdateConfig(configuring.id, config);

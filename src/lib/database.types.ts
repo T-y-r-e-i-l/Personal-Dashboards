@@ -173,6 +173,7 @@ export type Database = {
           user_id: string;
           name: string;
           active: boolean;
+          sort_order: number;
           created_at: string;
         };
         Insert: {
@@ -180,6 +181,7 @@ export type Database = {
           user_id: string;
           name: string;
           active?: boolean;
+          sort_order?: number;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["habits"]["Insert"]>;
