@@ -11,6 +11,8 @@ const TIERS = ["must", "should", "nice"] as const;
 
 export function PrioritiesPanel({
   userId,
+  date,
+  readOnly = false,
 }: {
   userId: string;
   date?: string;
@@ -19,19 +21,19 @@ export function PrioritiesPanel({
   const supabase = createClient();
   const queryClient = useQueryClient();
   const showToast = useToast((s) => s.show);
-  const today = format(new Date(), "yyyy-MM-dd");
+  const day = date ?? format(new Date(), "yyyy-MM-dd");
   const [title, setTitle] = useState("");
   const [tier, setTier] = useState<(typeof TIERS)[number]>("must");
   const [adding, setAdding] = useState(false);
 
   const items = useQuery({
-    queryKey: ["daily_priorities", userId, today],
+    queryKey: ["daily_priorities", userId, day],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("daily_priorities")
         .select("*")
         .eq("user_id", userId)
-        .eq("priority_date", today)
+        .eq("priority_date", day)
         .order("created_at", { ascending: true });
       if (error) throw error;
       return data;
@@ -48,7 +50,7 @@ export function PrioritiesPanel({
     },
     onSuccess: () =>
       queryClient.invalidateQueries({
-        queryKey: ["daily_priorities", userId, today],
+        queryKey: ["daily_priorities", userId, day],
       }),
   });
 
@@ -58,7 +60,7 @@ export function PrioritiesPanel({
         user_id: userId,
         title: title.trim(),
         tier,
-        priority_date: today,
+        priority_date: day,
       });
       if (error) throw error;
     },
@@ -66,7 +68,7 @@ export function PrioritiesPanel({
       setTitle("");
       setAdding(false);
       await queryClient.invalidateQueries({
-        queryKey: ["daily_priorities", userId, today],
+        queryKey: ["daily_priorities", userId, day],
       });
     },
     onError: (err: Error) => showToast(err.message),
@@ -83,8 +85,8 @@ export function PrioritiesPanel({
     return (
       <EmptyState
         message="Set what must get done today."
-        actionLabel="Add priority"
-        onAction={() => setAdding(true)}
+        actionLabel={readOnly ? undefined : "Add priority"}
+        onAction={readOnly ? undefined : () => setAdding(true)}
       />
     );
   }
@@ -105,17 +107,28 @@ export function PrioritiesPanel({
             <ul className="space-y-2">
               {group.map((item) => (
                 <li key={item.id} className="flex items-start gap-2">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      toggle.mutate({ id: item.id, done: item.done })
-                    }
-                    className={`mt-0.5 h-4 w-4 rounded border ${
-                      item.done
-                        ? "border-[var(--accent)] bg-[var(--accent)]"
-                        : "border-[var(--border)]"
-                    }`}
-                  />
+                  {readOnly ? (
+                    <span
+                      className={`mt-0.5 h-4 w-4 rounded border ${
+                        item.done
+                          ? "border-[var(--accent)] bg-[var(--accent)]"
+                          : "border-[var(--border)]"
+                      }`}
+                      aria-hidden
+                    />
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        toggle.mutate({ id: item.id, done: item.done })
+                      }
+                      className={`mt-0.5 h-4 w-4 rounded border ${
+                        item.done
+                          ? "border-[var(--accent)] bg-[var(--accent)]"
+                          : "border-[var(--border)]"
+                      }`}
+                    />
+                  )}
                   <span
                     className={`text-sm ${
                       item.done
@@ -132,7 +145,7 @@ export function PrioritiesPanel({
         );
       })}
 
-      {adding ? (
+      {!readOnly && adding ? (
         <form
           className="space-y-2"
           onSubmit={(e) => {
@@ -169,7 +182,7 @@ export function PrioritiesPanel({
             </button>
           </div>
         </form>
-      ) : (
+      ) : !readOnly ? (
         <button
           type="button"
           onClick={() => setAdding(true)}
@@ -177,7 +190,7 @@ export function PrioritiesPanel({
         >
           + Add priority
         </button>
-      )}
+      ) : null}
     </div>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { computeStreak, lastNDays } from "@/lib/utils/habits";
@@ -10,6 +10,8 @@ import { useToast } from "@/components/ui/Toast";
 
 export function HabitsPanel({
   userId,
+  date,
+  readOnly = false,
 }: {
   userId: string;
   date?: string;
@@ -20,8 +22,9 @@ export function HabitsPanel({
   const showToast = useToast((s) => s.show);
   const [name, setName] = useState("");
   const [adding, setAdding] = useState(false);
-  const days = lastNDays(7);
-  const today = format(new Date(), "yyyy-MM-dd");
+  const day = date ?? format(new Date(), "yyyy-MM-dd");
+  const dayDate = parseISO(day);
+  const days = lastNDays(7, dayDate);
 
   const habits = useQuery({
     queryKey: ["habits", userId],
@@ -38,13 +41,14 @@ export function HabitsPanel({
   });
 
   const logs = useQuery({
-    queryKey: ["habit_logs", userId],
+    queryKey: ["habit_logs", userId, day],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("habit_logs")
         .select("*")
         .eq("user_id", userId)
-        .gte("log_date", days[0]);
+        .gte("log_date", days[0])
+        .lte("log_date", day);
       if (error) throw error;
       return data;
     },
@@ -63,20 +67,20 @@ export function HabitsPanel({
           .from("habit_logs")
           .delete()
           .eq("habit_id", habitId)
-          .eq("log_date", today);
+          .eq("log_date", day);
         if (error) throw error;
       } else {
         const { error } = await supabase.from("habit_logs").upsert({
           user_id: userId,
           habit_id: habitId,
-          log_date: today,
+          log_date: day,
           completed: true,
         });
         if (error) throw error;
       }
     },
     onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: ["habit_logs", userId] }),
+      queryClient.invalidateQueries({ queryKey: ["habit_logs", userId, day] }),
     onError: (err: Error) => showToast(err.message),
   });
 
@@ -104,8 +108,8 @@ export function HabitsPanel({
     return (
       <EmptyState
         message="Track a daily habit to build streaks."
-        actionLabel="Add habit"
-        onAction={() => setAdding(true)}
+        actionLabel={readOnly ? undefined : "Add habit"}
+        onAction={readOnly ? undefined : () => setAdding(true)}
       />
     );
   }
@@ -116,8 +120,8 @@ export function HabitsPanel({
         const habitDates = (logs.data ?? [])
           .filter((l) => l.habit_id === habit.id && l.completed)
           .map((l) => l.log_date);
-        const streak = computeStreak(habitDates);
-        const doneToday = habitDates.includes(today);
+        const streak = computeStreak(habitDates, dayDate);
+        const doneOnDay = habitDates.includes(day);
 
         return (
           <div key={habit.id}>
@@ -126,26 +130,30 @@ export function HabitsPanel({
               <p className="text-xs text-[var(--muted)]">{streak} day streak</p>
             </div>
             <div className="flex gap-1.5">
-              {days.map((day) => {
-                const done = habitDates.includes(day);
-                const isToday = day === today;
+              {days.map((d) => {
+                const done = habitDates.includes(d);
+                const isSelectedDay = d === day;
+                const canToggle = !readOnly && isSelectedDay;
                 return (
                   <button
-                    key={day}
+                    key={d}
                     type="button"
-                    disabled={!isToday}
+                    disabled={!canToggle}
                     onClick={() =>
-                      isToday &&
-                      toggle.mutate({ habitId: habit.id, completed: doneToday })
+                      canToggle &&
+                      toggle.mutate({
+                        habitId: habit.id,
+                        completed: doneOnDay,
+                      })
                     }
                     className={`h-8 flex-1 rounded-full text-[10px] font-medium ${
                       done
                         ? "bg-[var(--ink)] text-[var(--canvas)]"
                         : "bg-[var(--surface-soft)] text-[var(--muted)]"
-                    } ${isToday ? "ring-2 ring-[var(--accent)] ring-offset-1" : ""}`}
-                    title={day}
+                    } ${isSelectedDay ? "ring-2 ring-[var(--accent)] ring-offset-1" : ""}`}
+                    title={d}
                   >
-                    {day.slice(8)}
+                    {d.slice(8)}
                   </button>
                 );
               })}
@@ -154,7 +162,7 @@ export function HabitsPanel({
         );
       })}
 
-      {adding ? (
+      {!readOnly && adding ? (
         <form
           className="flex gap-2"
           onSubmit={(e) => {
@@ -176,7 +184,7 @@ export function HabitsPanel({
             Add
           </button>
         </form>
-      ) : (
+      ) : !readOnly ? (
         <button
           type="button"
           onClick={() => setAdding(true)}
@@ -184,7 +192,7 @@ export function HabitsPanel({
         >
           + Add habit
         </button>
-      )}
+      ) : null}
     </div>
   );
 }

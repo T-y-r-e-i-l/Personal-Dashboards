@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { format, subDays } from "date-fns";
+import { format, parseISO, subDays } from "date-fns";
 import { useState } from "react";
 import {
   Line,
@@ -18,6 +18,8 @@ import { useToast } from "@/components/ui/Toast";
 
 export function MoodPanel({
   userId,
+  date,
+  readOnly = false,
 }: {
   userId: string;
   date?: string;
@@ -28,17 +30,18 @@ export function MoodPanel({
   const showToast = useToast((s) => s.show);
   const [mood, setMood] = useState(7);
   const [logging, setLogging] = useState(false);
-  const today = format(new Date(), "yyyy-MM-dd");
-  const weekAgo = format(subDays(new Date(), 6), "yyyy-MM-dd");
+  const day = date ?? format(new Date(), "yyyy-MM-dd");
+  const weekAgo = format(subDays(parseISO(day), 6), "yyyy-MM-dd");
 
   const logs = useQuery({
-    queryKey: ["mood_logs", userId],
+    queryKey: ["mood_logs", userId, day],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("mood_logs")
         .select("*")
         .eq("user_id", userId)
         .gte("log_date", weekAgo)
+        .lte("log_date", day)
         .order("log_date", { ascending: true });
       if (error) throw error;
       return data;
@@ -49,7 +52,7 @@ export function MoodPanel({
     mutationFn: async (value: number) => {
       const { error } = await supabase.from("mood_logs").upsert({
         user_id: userId,
-        log_date: today,
+        log_date: day,
         mood: value,
       });
       if (error) throw error;
@@ -57,7 +60,9 @@ export function MoodPanel({
     onSuccess: async () => {
       setLogging(false);
       showToast("Mood logged");
-      await queryClient.invalidateQueries({ queryKey: ["mood_logs", userId] });
+      await queryClient.invalidateQueries({
+        queryKey: ["mood_logs", userId, day],
+      });
     },
     onError: (err: Error) => showToast(err.message),
   });
@@ -68,14 +73,14 @@ export function MoodPanel({
 
   const data = logs.data ?? [];
   const avg = averageMood(data.map((d) => d.mood));
-  const todayLog = data.find((d) => d.log_date === today);
+  const dayLog = data.find((d) => d.log_date === day);
 
   if (data.length === 0 && !logging) {
     return (
       <EmptyState
         message="Log today's mood to start seeing trends."
-        actionLabel="Log mood"
-        onAction={() => setLogging(true)}
+        actionLabel={readOnly ? undefined : "Log mood"}
+        onAction={readOnly ? undefined : () => setLogging(true)}
       />
     );
   }
@@ -85,7 +90,7 @@ export function MoodPanel({
       <div className="flex items-end justify-between">
         <div>
           <p className="text-3xl font-semibold tracking-tight">
-            {todayLog?.mood ?? "—"}
+            {dayLog?.mood ?? "—"}
             <span className="text-base font-normal text-[var(--muted)]">
               /10
             </span>
@@ -94,16 +99,18 @@ export function MoodPanel({
             Week avg {avg ?? "—"}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => setLogging((v) => !v)}
-          className="text-xs font-medium text-[var(--accent)]"
-        >
-          {logging ? "Cancel" : "Log today"}
-        </button>
+        {!readOnly ? (
+          <button
+            type="button"
+            onClick={() => setLogging((v) => !v)}
+            className="text-xs font-medium text-[var(--accent)]"
+          >
+            {logging ? "Cancel" : "Log today"}
+          </button>
+        ) : null}
       </div>
 
-      {logging ? (
+      {logging && !readOnly ? (
         <div className="space-y-2">
           <input
             type="range"
