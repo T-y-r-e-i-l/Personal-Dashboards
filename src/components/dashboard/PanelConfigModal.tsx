@@ -1,10 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { PanelConfig, PanelType } from "@/lib/panels/types";
 import { PANEL_META } from "@/lib/panels/types";
 import { HabitsSettingsList } from "@/components/dashboard/HabitsSettingsList";
+import { TasksSettingsList } from "@/components/dashboard/TasksSettingsList";
 import { resolvePomodoroConfig } from "@/lib/time/pomodoro";
+import { useToast } from "@/components/ui/Toast";
 
 const ALL_PANEL_TYPES = Object.keys(PANEL_META) as PanelType[];
 
@@ -25,9 +27,12 @@ export function PanelConfigModal({
 }) {
   const [config, setConfig] = useState<PanelConfig>(initial);
   const [showSwap, setShowSwap] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [swapType, setSwapType] = useState<PanelType>(
     () => ALL_PANEL_TYPES.find((type) => type !== panelType) ?? panelType,
   );
+  const tasksSaveRef = useRef<(() => Promise<void>) | null>(null);
+  const showToast = useToast((s) => s.show);
   const meta = PANEL_META[panelType];
   const swapOptions = ALL_PANEL_TYPES.filter((type) => type !== panelType);
 
@@ -36,7 +41,7 @@ export function PanelConfigModal({
       <div
         role="dialog"
         aria-modal="true"
-        className="w-full max-w-md rounded-[24px] bg-[var(--surface)] p-6 shadow-xl"
+        className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-[24px] bg-[var(--surface)] p-6 shadow-xl"
       >
         <h2 className="font-[family-name:var(--font-display)] text-2xl">
           {meta.label} settings
@@ -93,19 +98,22 @@ export function PanelConfigModal({
           )}
 
           {panelType === "tasks" && (
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={config.showCompleted ?? true}
-                onChange={(e) =>
-                  setConfig((c) => ({
-                    ...c,
-                    showCompleted: e.target.checked,
-                  }))
-                }
-              />
-              Show completed tasks
-            </label>
+            <>
+              <TasksSettingsList userId={userId} saveRef={tasksSaveRef} />
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={config.showCompleted ?? true}
+                  onChange={(e) =>
+                    setConfig((c) => ({
+                      ...c,
+                      showCompleted: e.target.checked,
+                    }))
+                  }
+                />
+                Show completed tasks
+              </label>
+            </>
           )}
 
           {panelType === "weather" && (
@@ -250,34 +258,50 @@ export function PanelConfigModal({
             <button
               type="button"
               onClick={onClose}
+              disabled={saving}
               className="rounded-full px-4 py-2 text-sm text-[var(--muted)]"
             >
               Cancel
             </button>
             <button
               type="button"
+              disabled={saving}
               onClick={() => {
-                if (showSwap && swapType !== panelType) {
-                  onSwap(swapType);
-                  return;
-                }
-                const next =
-                  panelType === "time"
-                    ? (() => {
-                        const resolved = resolvePomodoroConfig(config);
-                        return {
-                          ...config,
-                          pomodoroFocusMin: resolved.focusMin,
-                          pomodoroShortBreakMin: resolved.shortBreakMin,
-                          pomodoroLongBreakMin: resolved.longBreakMin,
-                        };
-                      })()
-                    : config;
-                onSave(next);
+                void (async () => {
+                  if (showSwap && swapType !== panelType) {
+                    onSwap(swapType);
+                    return;
+                  }
+                  setSaving(true);
+                  try {
+                    if (panelType === "tasks" && tasksSaveRef.current) {
+                      await tasksSaveRef.current();
+                    }
+                    const next =
+                      panelType === "time"
+                        ? (() => {
+                            const resolved = resolvePomodoroConfig(config);
+                            return {
+                              ...config,
+                              pomodoroFocusMin: resolved.focusMin,
+                              pomodoroShortBreakMin: resolved.shortBreakMin,
+                              pomodoroLongBreakMin: resolved.longBreakMin,
+                            };
+                          })()
+                        : config;
+                    onSave(next);
+                  } catch (err) {
+                    showToast(
+                      err instanceof Error ? err.message : "Could not save",
+                    );
+                  } finally {
+                    setSaving(false);
+                  }
+                })();
               }}
-              className="rounded-full bg-[var(--ink)] px-4 py-2 text-sm font-medium text-[var(--canvas)]"
+              className="rounded-full bg-[var(--ink)] px-4 py-2 text-sm font-medium text-[var(--canvas)] disabled:opacity-50"
             >
-              Save
+              {saving ? "Saving…" : "Save"}
             </button>
           </div>
         </div>

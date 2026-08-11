@@ -43,8 +43,6 @@ export function TasksPanel({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState("");
   const [editDueDate, setEditDueDate] = useState("");
-  const [draggingId, setDraggingId] = useState<string | null>(null);
-  const [dropTargetId, setDropTargetId] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
 
   const interactive = !readOnly;
@@ -210,55 +208,6 @@ export function TasksPanel({
     onError: (err: Error) => showToast(err.message),
   });
 
-  const reorder = useMutation({
-    mutationFn: async ({
-      fromId,
-      toId,
-    }: {
-      fromId: string;
-      toId: string;
-    }) => {
-      const items = tasks.data ?? [];
-      const from = items.findIndex((task) => task.id === fromId);
-      const to = items.findIndex((task) => task.id === toId);
-      if (from < 0 || to < 0 || from === to) return;
-
-      const reordered = [...items];
-      const [moved] = reordered.splice(from, 1);
-      reordered.splice(to, 0, moved);
-
-      // Keep updated_at untouched so day-history "completed today" stays accurate.
-      const updates = await Promise.all(
-        reordered.map((task, order) =>
-          supabase
-            .from("tasks")
-            .update({ sort_order: order + 1 })
-            .eq("id", task.id)
-            .eq("user_id", userId),
-        ),
-      );
-      const failed = updates.find((result) => result.error)?.error;
-      if (failed) throw failed;
-    },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["tasks", userId] });
-    },
-    onError: (err: Error) => {
-      if (/column|schema cache/i.test(err.message)) {
-        showToast(
-          "Run the tasks_sort_order migration in Supabase to enable reordering.",
-        );
-        return;
-      }
-      showToast(err.message);
-    },
-  });
-
-  function clearDragState() {
-    setDraggingId(null);
-    setDropTargetId(null);
-  }
-
   const updateTask = useMutation({
     mutationFn: async ({
       id,
@@ -394,22 +343,13 @@ export function TasksPanel({
   }
 
   const activeTaskId = running.data?.task_id ?? null;
-  const displayItems =
-    interactive && draggingId && dropTargetId && draggingId !== dropTargetId
-      ? moveItem(items, draggingId, dropTargetId)
-      : items;
 
   return (
     <div className="space-y-3">
       <ul className="space-y-2">
-        {displayItems.map((task) => {
+        {items.map((task) => {
           const isRunning = interactive && activeTaskId === task.id;
           const isEditing = interactive && editingId === task.id;
-          const isDragging = draggingId === task.id;
-          const isDropTarget =
-            Boolean(draggingId) &&
-            dropTargetId === task.id &&
-            draggingId !== task.id;
 
           if (isEditing) {
             return (
@@ -486,48 +426,10 @@ export function TasksPanel({
           return (
             <li
               key={task.id}
-              onDragOver={(e) => {
-                if (!interactive || !draggingId || draggingId === task.id) return;
-                e.preventDefault();
-                e.dataTransfer.dropEffect = "move";
-                if (dropTargetId !== task.id) setDropTargetId(task.id);
-              }}
-              onDrop={(e) => {
-                if (!interactive || !draggingId) return;
-                e.preventDefault();
-                const fromId = e.dataTransfer.getData("text/task-id") || draggingId;
-                if (fromId && fromId !== task.id) {
-                  reorder.mutate({ fromId, toId: task.id });
-                }
-                clearDragState();
-              }}
               className={`flex items-start gap-2 rounded-xl px-1 py-0.5 transition ${
                 isRunning ? "bg-[var(--surface-soft)]" : ""
-              } ${isDragging ? "opacity-50" : ""} ${
-                isDropTarget ? "ring-2 ring-[var(--accent)]/40" : ""
               }`}
             >
-              {interactive ? (
-                <button
-                  type="button"
-                  draggable
-                  aria-label={`Drag to reorder ${task.title}`}
-                  title="Drag to reorder"
-                  disabled={reorder.isPending}
-                  onPointerDown={(e) => e.stopPropagation()}
-                  onDragStart={(e) => {
-                    e.stopPropagation();
-                    e.dataTransfer.effectAllowed = "move";
-                    e.dataTransfer.setData("text/task-id", task.id);
-                    setDraggingId(task.id);
-                    setDropTargetId(task.id);
-                  }}
-                  onDragEnd={clearDragState}
-                  className="task-drag-handle mt-0.5 flex h-7 w-7 shrink-0 cursor-grab items-center justify-center rounded-md text-[var(--muted)] transition hover:bg-[var(--surface-soft)] hover:text-[var(--ink)] active:cursor-grabbing disabled:opacity-50"
-                >
-                  <GripIcon />
-                </button>
-              ) : null}
               {readOnly ? (
                 <span
                   aria-hidden
@@ -696,20 +598,6 @@ function formatDueDate(dueDate: string) {
   return format(new Date(y, m - 1, d), "MMM d");
 }
 
-function moveItem<T extends { id: string }>(
-  items: T[],
-  fromId: string,
-  toId: string,
-): T[] {
-  const from = items.findIndex((item) => item.id === fromId);
-  const to = items.findIndex((item) => item.id === toId);
-  if (from < 0 || to < 0 || from === to) return items;
-  const next = [...items];
-  const [moved] = next.splice(from, 1);
-  next.splice(to, 0, moved);
-  return next;
-}
-
 function PlayIcon() {
   return (
     <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
@@ -726,15 +614,3 @@ function StopIcon() {
   );
 }
 
-function GripIcon() {
-  return (
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-      <circle cx="9" cy="7" r="1.5" />
-      <circle cx="15" cy="7" r="1.5" />
-      <circle cx="9" cy="12" r="1.5" />
-      <circle cx="15" cy="12" r="1.5" />
-      <circle cx="9" cy="17" r="1.5" />
-      <circle cx="15" cy="17" r="1.5" />
-    </svg>
-  );
-}
