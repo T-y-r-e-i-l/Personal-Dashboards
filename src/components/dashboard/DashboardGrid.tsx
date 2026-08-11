@@ -80,7 +80,8 @@ export function DashboardGrid({
     measureBeforeMount: true,
   });
   const [configPanelId, setConfigPanelId] = useState<string | null>(null);
-  const isMobile = width < MOBILE_BREAKPOINT;
+  const [expandedPanelId, setExpandedPanelId] = useState<string | null>(null);
+  const isMobile = mounted && width > 0 && width < MOBILE_BREAKPOINT;
 
   const lgLayout: Layout = useMemo(
     () =>
@@ -98,6 +99,15 @@ export function DashboardGrid({
 
   const layouts = useMemo(() => ({ lg: lgLayout }), [lgLayout]);
 
+  const mobilePanels = useMemo(
+    () =>
+      [...panels].sort((a, b) => {
+        if (a.y !== b.y) return a.y - b.y;
+        return a.x - b.x;
+      }),
+    [panels],
+  );
+
   const handleLayoutChange = useCallback(
     (_current: Layout, allLayouts: { lg?: Layout; xs?: Layout }) => {
       // Never persist the stacked mobile layout back to the database.
@@ -106,6 +116,10 @@ export function DashboardGrid({
     },
     [onLayoutChange, width],
   );
+
+  function togglePanel(panelId: string) {
+    setExpandedPanelId((current) => (current === panelId ? null : panelId));
+  }
 
   const configuring = panels.find((p) => p.id === configPanelId);
 
@@ -122,7 +136,38 @@ export function DashboardGrid({
 
   return (
     <div ref={containerRef} className="dashboard-grid w-full">
-      {mounted && width > 0 ? (
+      {!mounted || width <= 0 ? (
+        <div className="h-40" />
+      ) : isMobile ? (
+        <div className="space-y-3">
+          {mobilePanels.map((panel) => {
+            const type = panel.panel_type as PanelType;
+            const config = (panel.config ?? {}) as PanelConfig;
+            const collapsed = expandedPanelId !== panel.id;
+            return (
+              <div
+                key={panel.id}
+                className={collapsed ? undefined : "min-h-[280px]"}
+              >
+                <PanelChrome
+                  panelType={type}
+                  collapsible
+                  collapsed={collapsed}
+                  onToggleCollapse={() => togglePanel(panel.id)}
+                  onConfigure={() => setConfigPanelId(panel.id)}
+                  onRemove={() => onRemovePanel(panel.id)}
+                >
+                  {!collapsed ? (
+                    <PanelErrorBoundary title={PANEL_META[type]?.label}>
+                      {renderPanel(type, userId, location, config)}
+                    </PanelErrorBoundary>
+                  ) : null}
+                </PanelChrome>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
         <Responsive
           className="layout"
           width={width}
@@ -133,12 +178,12 @@ export function DashboardGrid({
           margin={[16, 16]}
           containerPadding={[0, 0]}
           dragConfig={{
-            enabled: !isMobile,
+            enabled: true,
             handle: ".panel-drag-handle",
             cancel: "button, input, textarea, select, a",
           }}
           resizeConfig={{
-            enabled: !isMobile,
+            enabled: true,
             handles: ["se"],
           }}
           compactor={verticalCompactor}
@@ -149,13 +194,7 @@ export function DashboardGrid({
             const config = (panel.config ?? {}) as PanelConfig;
             return (
               <div key={panel.id} className="dashboard-grid-item">
-                <div
-                  className={`panel-drag-handle h-full w-full ${
-                    isMobile
-                      ? "cursor-default"
-                      : "cursor-grab active:cursor-grabbing"
-                  }`}
-                >
+                <div className="panel-drag-handle h-full w-full cursor-grab active:cursor-grabbing">
                   <div className="h-full w-full animate-panel-fade">
                     <PanelChrome
                       panelType={type}
@@ -172,8 +211,6 @@ export function DashboardGrid({
             );
           })}
         </Responsive>
-      ) : (
-        <div className="h-40" />
       )}
 
       {configuring ? (

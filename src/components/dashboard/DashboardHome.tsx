@@ -201,17 +201,21 @@ export function DashboardHome({
         </div>
       </div>
 
-      <DashboardGrid
-        userId={userId}
-        location={initialProfile?.location ?? null}
-        panels={panels}
-        onLayoutChange={debouncedPersist}
-        onRemovePanel={(id) => void removePanel(id)}
-        onUpdateConfig={(id, config) => void updateConfig(id, config)}
-      />
+      <div className="flex flex-col">
+        <div className="order-2 md:order-1">
+          <DashboardGrid
+            userId={userId}
+            location={initialProfile?.location ?? null}
+            panels={panels}
+            onLayoutChange={debouncedPersist}
+            onRemovePanel={(id) => void removePanel(id)}
+            onUpdateConfig={(id, config) => void updateConfig(id, config)}
+          />
+        </div>
 
-      <div className="mt-10">
-        <QuickCapture userId={userId} />
+        <div className="order-1 mb-10 md:order-2 md:mb-0 md:mt-10">
+          <QuickCapture userId={userId} />
+        </div>
       </div>
     </main>
   );
