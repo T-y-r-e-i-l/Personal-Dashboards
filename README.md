@@ -22,6 +22,7 @@ cp .env.local.example .env.local
    - `20260810140000_note_media_storage.sql` (capture media uploads)
    - `20260810160000_captures_updated_at.sql`
    - `20260810170000_blog_posts.sql` (note visibility + daily blog posts)
+   - `20260810180000_time_entries.sql` (time tracking linked to tasks)
 
 3. Install and run:
 

@@ -48,6 +48,12 @@ export const PANEL_META: Record<
     defaultH: 3,
     description: "Today's events",
   },
+  time: {
+    label: "Time",
+    defaultW: 4,
+    defaultH: 3,
+    description: "Track focus time, optionally linked to to-dos",
+  },
 };
 
 export type PanelConfig = {

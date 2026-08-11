@@ -33,7 +33,13 @@ export type DayContext = {
   }[];
   habits: { name: string; completed: boolean }[];
   water: { glasses: number; goal: number } | null;
-  time_tracking: [];
+  time_tracking: {
+    description: string;
+    task_title: string | null;
+    minutes: number;
+    started_at: string;
+    ended_at: string | null;
+  }[];
 };
 
 export type DayRange = {

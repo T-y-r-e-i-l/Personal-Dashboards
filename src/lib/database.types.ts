@@ -13,7 +13,8 @@ export type PanelType =
   | "priorities"
   | "water"
   | "weather"
-  | "calendar";
+  | "calendar"
+  | "time";
 
 export type Database = {
   public: {
@@ -286,6 +287,27 @@ export type Database = {
         };
         Update: Partial<Database["public"]["Tables"]["calendar_events"]["Insert"]>;
       };
+      time_entries: {
+        Row: {
+          id: string;
+          user_id: string;
+          task_id: string | null;
+          description: string;
+          started_at: string;
+          ended_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          task_id?: string | null;
+          description?: string;
+          started_at: string;
+          ended_at?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["time_entries"]["Insert"]>;
+      };
     };
   };
 };
@@ -305,3 +327,4 @@ export type DailyPriority =
 export type WaterLog = Database["public"]["Tables"]["water_logs"]["Row"];
 export type CalendarEvent =
   Database["public"]["Tables"]["calendar_events"]["Row"];
+export type TimeEntry = Database["public"]["Tables"]["time_entries"]["Row"];

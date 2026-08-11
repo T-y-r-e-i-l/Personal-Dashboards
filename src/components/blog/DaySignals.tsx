@@ -21,7 +21,8 @@ export function DaySignals({ dayContext }: { dayContext: Json }) {
     ctx.weather ||
     ctx.calendar.length > 0 ||
     ctx.habits.length > 0 ||
-    ctx.water;
+    ctx.water ||
+    (ctx.time_tracking?.length ?? 0) > 0;
 
   if (!hasAnything) return null;
 
@@ -97,6 +98,17 @@ export function DaySignals({ dayContext }: { dayContext: Json }) {
                   <li key={`${e.starts_at}-${e.title}`}>
                     {e.title}{" "}
                     <span className="text-xs opacity-70">({e.source})</span>
+                  </li>
+                ))}
+              </ul>
+            </Signal>
+          ) : null}
+          {(ctx.time_tracking?.length ?? 0) > 0 ? (
+            <Signal title="Time">
+              <ul className="list-disc pl-4">
+                {ctx.time_tracking.map((t) => (
+                  <li key={`${t.started_at}-${t.description}`}>
+                    {t.task_title || t.description || "Session"} — {t.minutes}m
                   </li>
                 ))}
               </ul>

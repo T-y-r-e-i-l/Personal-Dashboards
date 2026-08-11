@@ -23,6 +23,7 @@ export async function collectDayContext(
     habitsRes,
     habitLogsRes,
     waterRes,
+    timeRes,
     weather,
   ] = await Promise.all([
     supabase
@@ -73,6 +74,13 @@ export async function collectDayContext(
       .eq("user_id", userId)
       .eq("log_date", range.postDate)
       .maybeSingle(),
+    supabase
+      .from("time_entries")
+      .select("description, started_at, ended_at, tasks(title)")
+      .eq("user_id", userId)
+      .lt("started_at", range.endUtc)
+      .or(`ended_at.is.null,ended_at.gte.${range.startUtc}`)
+      .order("started_at", { ascending: true }),
     fetchWeatherSnapshot(location),
   ]);
 
@@ -84,6 +92,8 @@ export async function collectDayContext(
   if (habitsRes.error) throw habitsRes.error;
   if (habitLogsRes.error) throw habitLogsRes.error;
   if (waterRes.error) throw waterRes.error;
+  // time_entries may be missing before migration — treat as empty
+  const timeEntriesOk = !timeRes.error;
 
   type CaptureRow = {
     id: string;
@@ -107,6 +117,12 @@ export async function collectDayContext(
   type HabitRow = { id: string; name: string };
   type HabitLogRow = { habit_id: string; completed: boolean };
   type WaterRow = { glasses: number; goal: number };
+  type TimeRow = {
+    description: string;
+    started_at: string;
+    ended_at: string | null;
+    tasks?: { title: string } | null;
+  };
 
   const captures = (capturesRes.data ?? []) as CaptureRow[];
   const tasks = (tasksRes.data ?? []) as TaskRow[];
@@ -116,6 +132,30 @@ export async function collectDayContext(
   const habits = (habitsRes.data ?? []) as HabitRow[];
   const habitLogs = (habitLogsRes.data ?? []) as HabitLogRow[];
   const water = (waterRes.data ?? null) as WaterRow | null;
+  const timeRows = (
+    timeEntriesOk ? (timeRes.data ?? []) : []
+  ) as unknown as TimeRow[];
+
+  const dayStart = new Date(range.startUtc).getTime();
+  const dayEnd = new Date(range.endUtc).getTime();
+  const time_tracking: DayContext["time_tracking"] = timeRows.map((entry) => {
+    const start = Math.max(dayStart, new Date(entry.started_at).getTime());
+    const endRaw = entry.ended_at
+      ? new Date(entry.ended_at).getTime()
+      : Math.min(dayEnd, Date.now());
+    const end = Math.min(dayEnd, endRaw);
+    const minutes = Math.max(0, Math.round((end - start) / 60_000));
+    const taskTitle = Array.isArray(entry.tasks)
+      ? (entry.tasks[0]?.title ?? null)
+      : (entry.tasks?.title ?? null);
+    return {
+      description: entry.description,
+      task_title: taskTitle,
+      minutes,
+      started_at: entry.started_at,
+      ended_at: entry.ended_at,
+    };
+  });
 
   const notes: NoteSnapshot[] = captures.map((row) => ({
     id: row.id,
@@ -211,7 +251,7 @@ export async function collectDayContext(
       completed: Boolean(habitLogById.get(habit.id)),
     })),
     water: water ? { glasses: water.glasses, goal: water.goal } : null,
-    time_tracking: [],
+    time_tracking,
   };
 
   return { range, context };

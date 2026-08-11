@@ -2,10 +2,19 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useToast } from "@/components/ui/Toast";
+import {
+  TIME_ENTRIES_KEY,
+  TIME_RUNNING_KEY,
+  elapsedMs,
+  fetchRunningEntry,
+  formatDuration,
+  startTimer,
+  stopRunningEntry,
+} from "@/lib/time/entries";
 
 export function TasksPanel({ userId }: { userId: string }) {
   const supabase = createClient();
@@ -13,6 +22,7 @@ export function TasksPanel({ userId }: { userId: string }) {
   const showToast = useToast((s) => s.show);
   const [title, setTitle] = useState("");
   const [adding, setAdding] = useState(false);
+  const [now, setNow] = useState(() => Date.now());
 
   const tasks = useQuery({
     queryKey: ["tasks", userId],
@@ -27,6 +37,25 @@ export function TasksPanel({ userId }: { userId: string }) {
       return data;
     },
   });
+
+  const running = useQuery({
+    queryKey: [TIME_RUNNING_KEY, userId],
+    queryFn: () => fetchRunningEntry(supabase, userId),
+    refetchInterval: 30_000,
+  });
+
+  useEffect(() => {
+    if (!running.data) return;
+    const id = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(id);
+  }, [running.data]);
+
+  async function invalidateTime() {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: [TIME_RUNNING_KEY, userId] }),
+      queryClient.invalidateQueries({ queryKey: [TIME_ENTRIES_KEY, userId] }),
+    ]);
+  }
 
   const toggle = useMutation({
     mutationFn: async ({
@@ -65,6 +94,31 @@ export function TasksPanel({ userId }: { userId: string }) {
     onError: (err: Error) => showToast(err.message),
   });
 
+  const timer = useMutation({
+    mutationFn: async ({
+      taskId,
+      taskTitle,
+      action,
+    }: {
+      taskId: string;
+      taskTitle: string;
+      action: "start" | "stop";
+    }) => {
+      if (action === "stop") {
+        return stopRunningEntry(supabase, userId);
+      }
+      return startTimer(supabase, {
+        userId,
+        taskId,
+        description: taskTitle,
+      });
+    },
+    onSuccess: async () => {
+      await invalidateTime();
+    },
+    onError: (err: Error) => showToast(err.message),
+  });
+
   if (tasks.isLoading) {
     return <p className="text-sm text-[var(--muted)]">Loading…</p>;
   }
@@ -80,41 +134,87 @@ export function TasksPanel({ userId }: { userId: string }) {
     );
   }
 
+  const activeTaskId = running.data?.task_id ?? null;
+
   return (
     <div className="space-y-3">
       <ul className="space-y-2">
-        {items.map((task) => (
-          <li key={task.id} className="flex items-start gap-3">
-            <button
-              type="button"
-              aria-label={task.status === "done" ? "Mark incomplete" : "Complete"}
-              onClick={() => toggle.mutate({ id: task.id, status: task.status })}
-              className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${
-                task.status === "done"
-                  ? "border-[var(--accent)] bg-[var(--accent)] text-white"
-                  : "border-[var(--border)]"
+        {items.map((task) => {
+          const isRunning = activeTaskId === task.id;
+          return (
+            <li
+              key={task.id}
+              className={`flex items-start gap-2 rounded-xl px-1 py-0.5 ${
+                isRunning ? "bg-[var(--surface-soft)]" : ""
               }`}
             >
-              {task.status === "done" ? "✓" : ""}
-            </button>
-            <div className="min-w-0">
-              <p
-                className={`text-sm ${
+              <button
+                type="button"
+                aria-label={
+                  task.status === "done" ? "Mark incomplete" : "Complete"
+                }
+                onClick={() =>
+                  toggle.mutate({ id: task.id, status: task.status })
+                }
+                className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${
                   task.status === "done"
-                    ? "text-[var(--muted)] line-through"
-                    : "text-[var(--ink)]"
+                    ? "border-[var(--accent)] bg-[var(--accent)] text-white"
+                    : "border-[var(--border)]"
                 }`}
               >
-                {task.title}
-              </p>
-              {task.due_date ? (
-                <p className="text-xs text-[var(--muted)]">
-                  {format(new Date(task.due_date), "MMM d")} · {task.priority}
+                {task.status === "done" ? "✓" : ""}
+              </button>
+              <div className="min-w-0 flex-1">
+                <p
+                  className={`text-sm ${
+                    task.status === "done"
+                      ? "text-[var(--muted)] line-through"
+                      : "text-[var(--ink)]"
+                  }`}
+                >
+                  {task.title}
                 </p>
+                <div className="flex flex-wrap items-center gap-2 text-xs text-[var(--muted)]">
+                  {task.due_date ? (
+                    <span>
+                      {format(new Date(task.due_date), "MMM d")} ·{" "}
+                      {task.priority}
+                    </span>
+                  ) : null}
+                  {isRunning && running.data ? (
+                    <span className="font-mono tabular-nums text-[var(--accent)]">
+                      {formatDuration(
+                        elapsedMs(running.data.started_at, null, now),
+                      )}
+                    </span>
+                  ) : null}
+                </div>
+              </div>
+              {task.status !== "done" ? (
+                <button
+                  type="button"
+                  aria-label={isRunning ? "Stop timer" : "Start timer"}
+                  title={isRunning ? "Stop timer" : "Start timer"}
+                  disabled={timer.isPending}
+                  onClick={() =>
+                    timer.mutate({
+                      taskId: task.id,
+                      taskTitle: task.title,
+                      action: isRunning ? "stop" : "start",
+                    })
+                  }
+                  className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border transition disabled:opacity-50 ${
+                    isRunning
+                      ? "border-[var(--ink)] bg-[var(--ink)] text-[var(--canvas)]"
+                      : "border-[var(--border)] text-[var(--muted)] hover:text-[var(--ink)]"
+                  }`}
+                >
+                  {isRunning ? <StopIcon /> : <PlayIcon />}
+                </button>
               ) : null}
-            </div>
-          </li>
-        ))}
+            </li>
+          );
+        })}
       </ul>
 
       {adding ? (
@@ -149,5 +249,21 @@ export function TasksPanel({ userId }: { userId: string }) {
         </button>
       )}
     </div>
+  );
+}
+
+function PlayIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+      <path d="M8 5.5v13l11-6.5L8 5.5Z" />
+    </svg>
+  );
+}
+
+function StopIcon() {
+  return (
+    <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+      <rect x="6" y="6" width="12" height="12" rx="1.5" />
+    </svg>
   );
 }

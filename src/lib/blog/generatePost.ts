@@ -62,7 +62,7 @@ async function writeSummaries(context: DayContext) {
     prompt: [
       "You write a personal end-of-day blog entry from structured life-dashboard data.",
       "Return two markdown summaries:",
-      "1) private_summary — for the owner only; weave notes, completed todos, priorities, mood, weather, calendar, habits/water. Do not invent facts. Time tracking may be empty.",
+      "1) private_summary — for the owner only; weave notes, completed todos, priorities, mood, weather, calendar, habits/water, and time tracking sessions (minutes). Do not invent facts.",
       "2) public_summary — for strangers; ONLY public notes + weather. Never mention private notes, mood scores, calendar event titles, tasks, or priorities.",
       "",
       "FULL (private) CONTEXT JSON:",
@@ -114,7 +114,8 @@ export async function generateDailyBlogPost(
     context.mood !== null ||
     context.calendar.length > 0 ||
     context.habits.some((h) => h.completed) ||
-    (context.water !== null && context.water.glasses > 0);
+    (context.water !== null && context.water.glasses > 0) ||
+    context.time_tracking.length > 0;
 
   if (!hasSignal) {
     return { created: false, post: null, reason: "empty_day" };

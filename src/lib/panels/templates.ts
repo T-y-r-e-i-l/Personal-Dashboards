@@ -38,12 +38,12 @@ export const TEMPLATES: DashboardTemplate[] = [
   {
     id: "work",
     name: "Work Day",
-    description: "Tasks, calendar, and priorities for focused work.",
+    description: "Tasks, time tracking, calendar, and priorities for focused work.",
     panels: [
       { panel_type: "tasks", x: 0, y: 0, w: 4, h: 3 },
-      { panel_type: "calendar", x: 4, y: 0, w: 4, h: 3 },
-      { panel_type: "priorities", x: 0, y: 3, w: 4, h: 3 },
-      { panel_type: "habits", x: 4, y: 3, w: 4, h: 3 },
+      { panel_type: "time", x: 4, y: 0, w: 4, h: 3 },
+      { panel_type: "calendar", x: 0, y: 3, w: 4, h: 3 },
+      { panel_type: "priorities", x: 4, y: 3, w: 4, h: 3 },
     ],
   },
   {

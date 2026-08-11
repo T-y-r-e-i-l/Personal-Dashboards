@@ -21,6 +21,7 @@ import { PrioritiesPanel } from "@/components/panels/PrioritiesPanel";
 import { WaterPanel } from "@/components/panels/WaterPanel";
 import { WeatherPanel } from "@/components/panels/WeatherPanel";
 import { CalendarPanel } from "@/components/panels/CalendarPanel";
+import { TimeTrackingPanel } from "@/components/panels/TimeTrackingPanel";
 
 function renderPanel(
   type: PanelType,
@@ -48,6 +49,8 @@ function renderPanel(
       );
     case "calendar":
       return <CalendarPanel userId={userId} />;
+    case "time":
+      return <TimeTrackingPanel userId={userId} />;
     default:
       return null;
   }
