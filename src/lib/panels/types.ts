@@ -67,4 +67,8 @@ export type PanelConfig = {
   dateRange?: "7d" | "30d" | "90d" | "6m" | "1y";
   showCompleted?: boolean;
   location?: string;
+  /** Time panel Pomodoro lengths (minutes). */
+  pomodoroFocusMin?: number;
+  pomodoroShortBreakMin?: number;
+  pomodoroLongBreakMin?: number;
 };

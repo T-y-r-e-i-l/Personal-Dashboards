@@ -306,6 +306,8 @@ export type Database = {
           description: string;
           started_at: string;
           ended_at: string | null;
+          timer_mode: "stopwatch" | "focus" | "short_break" | "long_break";
+          planned_seconds: number | null;
           created_at: string;
         };
         Insert: {
@@ -315,6 +317,8 @@ export type Database = {
           description?: string;
           started_at: string;
           ended_at?: string | null;
+          timer_mode?: "stopwatch" | "focus" | "short_break" | "long_break";
+          planned_seconds?: number | null;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["time_entries"]["Insert"]>;
