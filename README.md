@@ -43,7 +43,7 @@ npm run dev
 6. Optional — Daily LLM blog:
    - Set `SUPABASE_SERVICE_ROLE_KEY`, `CRON_SECRET`, and `AI_GATEWAY_API_KEY` or `OPENAI_API_KEY`
    - Optional `BLOG_MODEL` (default `openai/gpt-4.1-mini`)
-   - Deploy on Vercel so the hourly cron in `vercel.json` can hit `/api/cron/daily-blog` (generates when local hour is 23)
+   - Deploy on Vercel so the daily cron in `vercel.json` (`0 6 * * *` UTC) can hit `/api/cron/daily-blog` (Hobby allows one cron/day; digests the local calendar day that just ended)
    - Mark notes Public/Private in Quick Capture; publish posts from **Blog** → day page → share `/p/[id]`
 
 ## Scripts

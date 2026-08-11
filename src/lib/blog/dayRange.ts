@@ -101,3 +101,17 @@ export function formatPostDateTitle(postDate: string) {
     timeZone: "UTC",
   }).format(utc);
 }
+
+/**
+ * Instant to use for end-of-day digests.
+ * Hobby Vercel cron runs once daily (~06:00 UTC ≈ late evening Pacific).
+ * - Local 22–23: digest today
+ * - Local 0–8: digest yesterday (cron after midnight)
+ * - Otherwise: skip
+ */
+export function getDigestNow(timeZone: string, now = new Date()): Date | null {
+  const { localHour } = getDayRange(timeZone, now);
+  if (localHour >= 22) return now;
+  if (localHour <= 8) return new Date(now.getTime() - 12 * 60 * 60 * 1000);
+  return null;
+}

@@ -2,7 +2,7 @@ import { generateText, Output } from "ai";
 import { z } from "zod";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { collectDayContext } from "@/lib/blog/collectDayContext";
-import { getDayRange } from "@/lib/blog/dayRange";
+import { getDayRange, getDigestNow } from "@/lib/blog/dayRange";
 import type { DayContext } from "@/lib/blog/types";
 import type { BlogPost } from "@/lib/database.types";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -175,11 +175,12 @@ export async function runDailyBlogCron(now = new Date()) {
 
   for (const profile of list) {
     const timezone = profile.timezone || "America/Los_Angeles";
-    const range = getDayRange(timezone, now);
-
-    if (range.localHour !== 23) {
+    const digestNow = getDigestNow(timezone, now);
+    if (!digestNow) {
       continue;
     }
+
+    const range = getDayRange(timezone, digestNow);
 
     try {
       const result = await generateDailyBlogPost(
@@ -187,7 +188,7 @@ export async function runDailyBlogCron(now = new Date()) {
         profile.id,
         timezone,
         profile.location,
-        now,
+        digestNow,
       );
       results.push({
         userId: profile.id,
