@@ -4,6 +4,7 @@ import {
   logActivity,
 } from "@/lib/activity/logActivity";
 import type { TimeEntry } from "@/lib/database.types";
+import type { TimerMode } from "@/lib/time/pomodoro";
 
 export const TIME_ENTRIES_KEY = "time-entries";
 export const TIME_RUNNING_KEY = "time-running";
@@ -90,10 +91,14 @@ export async function startTimer(
     userId,
     taskId,
     description,
+    timerMode = "stopwatch",
+    plannedSeconds = null,
   }: {
     userId: string;
     taskId?: string | null;
     description?: string;
+    timerMode?: TimerMode;
+    plannedSeconds?: number | null;
   },
 ): Promise<TimeEntryRow> {
   await stopRunningEntry(supabase, userId);
@@ -107,6 +112,11 @@ export async function startTimer(
       description: (description ?? "").trim(),
       started_at: startedAt,
       ended_at: null,
+      timer_mode: timerMode ?? "stopwatch",
+      planned_seconds:
+        timerMode && timerMode !== "stopwatch"
+          ? (plannedSeconds ?? null)
+          : null,
     })
     .select("*, tasks(title)")
     .single();
@@ -123,6 +133,11 @@ export async function startTimer(
           description: (description ?? "").trim(),
           started_at: new Date().toISOString(),
           ended_at: null,
+          timer_mode: timerMode ?? "stopwatch",
+          planned_seconds:
+            timerMode && timerMode !== "stopwatch"
+              ? (plannedSeconds ?? null)
+              : null,
         })
         .select("*, tasks(title)")
         .single();
