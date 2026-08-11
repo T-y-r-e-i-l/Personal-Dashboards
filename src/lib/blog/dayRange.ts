@@ -67,6 +67,45 @@ function addCalendarDays(
   };
 }
 
+export function isValidPostDate(value: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const [y, m, d] = value.split("-").map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  return (
+    dt.getUTCFullYear() === y &&
+    dt.getUTCMonth() === m - 1 &&
+    dt.getUTCDate() === d
+  );
+}
+
+export function getDayRangeForDate(
+  timeZone: string,
+  postDate: string,
+): DayRange {
+  if (!isValidPostDate(postDate)) {
+    throw new Error(`Invalid postDate: ${postDate}`);
+  }
+  const [year, month, day] = postDate.split("-").map(Number);
+  const start = zonedTimeToUtc(year, month, day, 0, 0, timeZone);
+  const next = addCalendarDays(year, month, day, 1);
+  const end = zonedTimeToUtc(next.year, next.month, next.day, 0, 0, timeZone);
+  return {
+    postDate,
+    startUtc: start.toISOString(),
+    endUtc: end.toISOString(),
+    localHour: 0,
+  };
+}
+
+export function shiftPostDate(postDate: string, deltaDays: number): string {
+  if (!isValidPostDate(postDate)) {
+    throw new Error(`Invalid postDate: ${postDate}`);
+  }
+  const [year, month, day] = postDate.split("-").map(Number);
+  const next = addCalendarDays(year, month, day, deltaDays);
+  return `${String(next.year).padStart(4, "0")}-${String(next.month).padStart(2, "0")}-${String(next.day).padStart(2, "0")}`;
+}
+
 export function getDayRange(timeZone: string, now = new Date()): DayRange {
   const local = partsInTimeZone(now, timeZone);
   const postDate = `${String(local.year).padStart(4, "0")}-${String(local.month).padStart(2, "0")}-${String(local.day).padStart(2, "0")}`;
