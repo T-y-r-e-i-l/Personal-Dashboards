@@ -29,7 +29,7 @@ export type DayContext = {
     title: string;
     starts_at: string;
     ends_at: string | null;
-    source: "local" | "google";
+    source: "google";
   }[];
   habits: { name: string; completed: boolean }[];
   water: { glasses: number; goal: number } | null;

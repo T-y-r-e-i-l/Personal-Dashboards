@@ -192,9 +192,7 @@ export function QuickCapture({ userId }: { userId: string }) {
                 }
               }}
               rows={4}
-              placeholder={
-                "Capture a thought, task, or note…\n\n**bold**, _italic_, - lists, or attach media below"
-              }
+              placeholder="Capture a thought..."
               className="w-full resize-y bg-transparent font-mono text-sm leading-relaxed outline-none placeholder:font-[family-name:var(--font-body)] placeholder:text-[var(--muted)]"
             />
           ) : (

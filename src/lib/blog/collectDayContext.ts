@@ -19,7 +19,6 @@ export async function collectDayContext(
     tasksRes,
     prioritiesRes,
     moodRes,
-    localEventsRes,
     habitsRes,
     habitLogsRes,
     waterRes,
@@ -52,13 +51,6 @@ export async function collectDayContext(
       .eq("log_date", range.postDate)
       .maybeSingle(),
     supabase
-      .from("calendar_events")
-      .select("title, starts_at, ends_at")
-      .eq("user_id", userId)
-      .gte("starts_at", range.startUtc)
-      .lt("starts_at", range.endUtc)
-      .order("starts_at", { ascending: true }),
-    supabase
       .from("habits")
       .select("id, name")
       .eq("user_id", userId)
@@ -88,7 +80,6 @@ export async function collectDayContext(
   if (tasksRes.error) throw tasksRes.error;
   if (prioritiesRes.error) throw prioritiesRes.error;
   if (moodRes.error) throw moodRes.error;
-  if (localEventsRes.error) throw localEventsRes.error;
   if (habitsRes.error) throw habitsRes.error;
   if (habitLogsRes.error) throw habitLogsRes.error;
   if (waterRes.error) throw waterRes.error;
@@ -109,11 +100,6 @@ export async function collectDayContext(
     stress: number | null;
     note: string | null;
   };
-  type EventRow = {
-    title: string;
-    starts_at: string;
-    ends_at: string | null;
-  };
   type HabitRow = { id: string; name: string };
   type HabitLogRow = { habit_id: string; completed: boolean };
   type WaterRow = { glasses: number; goal: number };
@@ -128,7 +114,6 @@ export async function collectDayContext(
   const tasks = (tasksRes.data ?? []) as TaskRow[];
   const priorities = (prioritiesRes.data ?? []) as PriorityRow[];
   const mood = (moodRes.data ?? null) as MoodRow | null;
-  const localEvents = (localEventsRes.data ?? []) as EventRow[];
   const habits = (habitsRes.data ?? []) as HabitRow[];
   const habitLogs = (habitLogsRes.data ?? []) as HabitLogRow[];
   const water = (waterRes.data ?? null) as WaterRow | null;
@@ -168,12 +153,7 @@ export async function collectDayContext(
     habitLogs.map((log) => [log.habit_id, log.completed]),
   );
 
-  const calendar: DayContext["calendar"] = localEvents.map((event) => ({
-    title: event.title,
-    starts_at: event.starts_at,
-    ends_at: event.ends_at,
-    source: "local" as const,
-  }));
+  const calendar: DayContext["calendar"] = [];
 
   try {
     let token = await getValidGoogleAccessToken(supabase, userId);

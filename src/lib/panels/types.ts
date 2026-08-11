@@ -46,7 +46,7 @@ export const PANEL_META: Record<
     label: "Calendar",
     defaultW: 3,
     defaultH: 3,
-    description: "Today's events",
+    description: "Today's Google Calendar events",
   },
   time: {
     label: "Time",

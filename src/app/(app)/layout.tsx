@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { AppShell } from "@/components/layout/AppShell";
+import { DashboardActionsProvider } from "@/components/dashboard/DashboardActionsContext";
 
 export default async function AppLayout({
   children,
@@ -14,5 +15,9 @@ export default async function AppLayout({
 
   if (!user) redirect("/login");
 
-  return <AppShell email={user.email}>{children}</AppShell>;
+  return (
+    <DashboardActionsProvider>
+      <AppShell email={user.email}>{children}</AppShell>
+    </DashboardActionsProvider>
+  );
 }

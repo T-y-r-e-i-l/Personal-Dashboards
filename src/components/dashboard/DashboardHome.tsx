@@ -9,6 +9,8 @@ import { PANEL_META, type PanelConfig, type PanelType } from "@/lib/panels/types
 import { timeOfDayGreeting } from "@/lib/utils/greeting";
 import { QuickCapture } from "@/components/capture/QuickCapture";
 import { DashboardGrid } from "@/components/dashboard/DashboardGrid";
+import { DashboardHeaderMeta } from "@/components/dashboard/DashboardHeaderMeta";
+import { useDashboardActions } from "@/components/dashboard/DashboardActionsContext";
 import { useToast } from "@/components/ui/Toast";
 
 export function DashboardHome({
@@ -24,6 +26,7 @@ export function DashboardHome({
 }) {
   const router = useRouter();
   const showToast = useToast((s) => s.show);
+  const { registerAddPanel } = useDashboardActions();
   const supabase = useMemo(() => createClient(), []);
   const [dashboards, setDashboards] = useState(initialDashboards);
   const [activeId, setActiveId] = useState(
@@ -32,7 +35,6 @@ export function DashboardHome({
       null,
   );
   const [panels, setPanels] = useState(initialPanels);
-  const [addingOpen, setAddingOpen] = useState(false);
 
   useEffect(() => {
     if (!initialProfile?.onboarding_completed && dashboards.length === 0) {
@@ -90,32 +92,40 @@ export function DashboardHome({
     };
   }, [persistLayout]);
 
-  async function addPanel(type: PanelType) {
-    if (!activeId) return;
-    const meta = PANEL_META[type];
-    const maxY = panels.reduce((acc, p) => Math.max(acc, p.y + p.h), 0);
-    const { data, error } = await supabase
-      .from("dashboard_panels")
-      .insert({
-        dashboard_id: activeId,
-        user_id: userId,
-        panel_type: type,
-        x: 0,
-        y: maxY,
-        w: meta.defaultW,
-        h: meta.defaultH,
-        config: {},
-      })
-      .select()
-      .single();
+  const addPanel = useCallback(
+    async (type: PanelType) => {
+      if (!activeId) return;
+      const meta = PANEL_META[type];
+      const maxY = panels.reduce((acc, p) => Math.max(acc, p.y + p.h), 0);
+      const { data, error } = await supabase
+        .from("dashboard_panels")
+        .insert({
+          dashboard_id: activeId,
+          user_id: userId,
+          panel_type: type,
+          x: 0,
+          y: maxY,
+          w: meta.defaultW,
+          h: meta.defaultH,
+          config: {},
+        })
+        .select()
+        .single();
 
-    if (error || !data) {
-      showToast(error?.message ?? "Could not add panel");
-      return;
-    }
-    setPanels((prev) => [...prev, data]);
-    setAddingOpen(false);
-  }
+      if (error || !data) {
+        showToast(error?.message ?? "Could not add panel");
+        return;
+      }
+      setPanels((prev) => [...prev, data]);
+      showToast(`${meta.label} added`);
+    },
+    [activeId, panels, showToast, supabase, userId],
+  );
+
+  useEffect(() => {
+    registerAddPanel(addPanel);
+    return () => registerAddPanel(null);
+  }, [addPanel, registerAddPanel]);
 
   async function removePanel(panelId: string) {
     const { error } = await supabase
@@ -151,7 +161,7 @@ export function DashboardHome({
   return (
     <main className="mx-auto w-full max-w-6xl px-4 py-8 md:px-8">
       <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
-        <div>
+        <div className="min-w-0 flex-1">
           <p className="text-sm text-[var(--muted)]">Today</p>
           <h1 className="font-[family-name:var(--font-display)] text-4xl tracking-tight md:text-5xl">
             {timeOfDayGreeting()}, {firstName}
@@ -161,7 +171,11 @@ export function DashboardHome({
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-end gap-4 sm:justify-end">
+          <DashboardHeaderMeta
+            location={initialProfile?.location}
+            timezone={initialProfile?.timezone}
+          />
           {dashboards.length > 1 ? (
             <select
               value={activeId ?? ""}
@@ -175,29 +189,6 @@ export function DashboardHome({
               ))}
             </select>
           ) : null}
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() => setAddingOpen((v) => !v)}
-              className="rounded-full bg-[var(--ink)] px-4 py-2 text-sm font-medium text-[var(--canvas)]"
-            >
-              Add panel
-            </button>
-            {addingOpen ? (
-              <div className="absolute right-0 z-20 mt-2 w-56 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-2 shadow-lg">
-                {(Object.keys(PANEL_META) as PanelType[]).map((type) => (
-                  <button
-                    key={type}
-                    type="button"
-                    onClick={() => void addPanel(type)}
-                    className="block w-full rounded-xl px-3 py-2 text-left text-sm hover:bg-[var(--surface-soft)]"
-                  >
-                    {PANEL_META[type].label}
-                  </button>
-                ))}
-              </div>
-            ) : null}
-          </div>
         </div>
       </div>
 
