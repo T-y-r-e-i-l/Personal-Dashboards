@@ -1,11 +1,12 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useToast } from "@/components/ui/Toast";
 import { getDayRangeForDate } from "@/lib/blog/dayRange";
+import type { PanelConfig } from "@/lib/panels/types";
 import {
   TIME_ENTRIES_KEY,
   TIME_RUNNING_KEY,
@@ -18,17 +19,43 @@ import {
   todayBoundsLocal,
   type TimeEntryRow,
 } from "@/lib/time/entries";
+import {
+  completeToastMessage,
+  isPomodoroComplete,
+  modeLabel,
+  plannedSecondsForMode,
+  remainingMs,
+  resolvePomodoroConfig,
+  type TimerMode,
+} from "@/lib/time/pomodoro";
+
+type PomodoroMode = Exclude<TimerMode, "stopwatch">;
+
+function isSchemaMigrationError(message: string): boolean {
+  return /column|schema cache|timer_mode|planned_seconds/i.test(message);
+}
+
+function requestNotificationPermissionOnce() {
+  if (
+    typeof Notification !== "undefined" &&
+    Notification.permission === "default"
+  ) {
+    void Notification.requestPermission();
+  }
+}
 
 export function TimeTrackingPanel({
   userId,
   date,
   readOnly = false,
   timeZone,
+  config,
 }: {
   userId: string;
   date?: string;
   readOnly?: boolean;
   timeZone?: string;
+  config?: PanelConfig;
 }) {
   const supabase = createClient();
   const queryClient = useQueryClient();
@@ -36,6 +63,8 @@ export function TimeTrackingPanel({
   const [description, setDescription] = useState("");
   const [taskId, setTaskId] = useState("");
   const [now, setNow] = useState(() => Date.now());
+  const autoCompletedId = useRef<string | null>(null);
+  const pomodoro = resolvePomodoroConfig(config);
 
   const dayBounds = useMemo(() => {
     if (date && timeZone) {
@@ -100,27 +129,60 @@ export function TimeTrackingPanel({
   }
 
   const start = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (opts?: {
+      timerMode?: TimerMode;
+      plannedSeconds?: number | null;
+    }) => {
+      const timerMode = opts?.timerMode ?? "stopwatch";
       const selected = openTasks.data?.find((t) => t.id === taskId);
+
+      if (timerMode === "short_break" || timerMode === "long_break") {
+        return startTimer(supabase, {
+          userId,
+          taskId: null,
+          description: modeLabel(timerMode),
+          timerMode,
+          plannedSeconds: opts?.plannedSeconds ?? null,
+        });
+      }
+
+      if (timerMode === "focus") {
+        const desc = description.trim() || selected?.title || "Focus";
+        return startTimer(supabase, {
+          userId,
+          taskId: taskId || null,
+          description: desc,
+          timerMode,
+          plannedSeconds: opts?.plannedSeconds ?? null,
+        });
+      }
+
       const desc =
         description.trim() || selected?.title || "Focus session";
       return startTimer(supabase, {
         userId,
         taskId: taskId || null,
         description: desc,
+        timerMode: "stopwatch",
+        plannedSeconds: null,
       });
     },
     onSuccess: async () => {
       setDescription("");
       await invalidateTime();
     },
-    onError: (err: Error) => showToast(err.message),
+    onError: (err: Error) => {
+      if (isSchemaMigrationError(err.message)) {
+        showToast("Run the time_entries Pomodoro migration in Supabase.");
+        return;
+      }
+      showToast(err.message);
+    },
   });
 
   const stop = useMutation({
     mutationFn: () => stopRunningEntry(supabase, userId),
     onSuccess: async () => {
-      showToast("Timer stopped");
       await invalidateTime();
     },
     onError: (err: Error) => showToast(err.message),
@@ -136,13 +198,70 @@ export function TimeTrackingPanel({
 
   function onStart(e: FormEvent) {
     e.preventDefault();
-    start.mutate();
+    start.mutate({ timerMode: "stopwatch" });
+  }
+
+  function startPomodoro(mode: PomodoroMode) {
+    requestNotificationPermissionOnce();
+    start.mutate({
+      timerMode: mode,
+      plannedSeconds: plannedSecondsForMode(mode, pomodoro),
+    });
   }
 
   const active = interactive && !date ? running.data : null;
   const finished = (entries.data ?? []).filter((row) => row.ended_at);
   const loading =
     (interactive && !date && running.isLoading) || entries.isLoading;
+
+  useEffect(() => {
+    if (!interactive || !active?.planned_seconds || !active.started_at) return;
+    if (!isPomodoroComplete(active.started_at, active.planned_seconds, now)) {
+      return;
+    }
+    if (autoCompletedId.current === active.id) return;
+    autoCompletedId.current = active.id;
+    const mode = (active.timer_mode ?? "focus") as TimerMode;
+    const toastText = completeToastMessage(mode);
+    const notifyBody = active.description || modeLabel(mode);
+    stop.mutate(undefined, {
+      onSuccess: () => {
+        showToast(toastText);
+        if (
+          typeof Notification !== "undefined" &&
+          Notification.permission === "granted"
+        ) {
+          new Notification(toastText, { body: notifyBody });
+        } else if (
+          typeof Notification !== "undefined" &&
+          Notification.permission === "default"
+        ) {
+          void Notification.requestPermission();
+        }
+      },
+    });
+  }, [active, interactive, now, showToast, stop]);
+
+  const modeButtons = interactive ? (
+    <PomodoroModeButtons
+      pomodoro={pomodoro}
+      disabled={start.isPending || stop.isPending}
+      onStart={startPomodoro}
+    />
+  ) : null;
+
+  const startForm = interactive ? (
+    <StartForm
+      description={description}
+      setDescription={setDescription}
+      taskId={taskId}
+      setTaskId={setTaskId}
+      tasks={openTasks.data ?? []}
+      pending={start.isPending}
+      onSubmit={onStart}
+      switchMode={Boolean(active)}
+    />
+  ) : null;
 
   if (loading) {
     return <p className="text-sm text-[var(--muted)]">Loading…</p>;
@@ -158,20 +277,23 @@ export function TimeTrackingPanel({
               : "Start a timer or link one to a to-do."
           }
         />
-        {interactive ? (
-          <StartForm
-            description={description}
-            setDescription={setDescription}
-            taskId={taskId}
-            setTaskId={setTaskId}
-            tasks={openTasks.data ?? []}
-            pending={start.isPending}
-            onSubmit={onStart}
-          />
-        ) : null}
+        {modeButtons}
+        {startForm}
       </div>
     );
   }
+
+  const activeTitle =
+    active?.tasks?.title ||
+    active?.description ||
+    (active ? modeLabel(active.timer_mode ?? "stopwatch") : "Timer");
+
+  const activeDurationMs =
+    active?.planned_seconds != null && active.started_at
+      ? remainingMs(active.started_at, active.planned_seconds, now)
+      : active
+        ? elapsedMs(active.started_at, null, now)
+        : 0;
 
   return (
     <div className="flex h-full flex-col gap-3">
@@ -180,21 +302,27 @@ export function TimeTrackingPanel({
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <p className="truncate text-sm font-medium text-[var(--ink)]">
-                {active.tasks?.title || active.description || "Timer"}
+                {activeTitle}
               </p>
-              {active.tasks?.title && active.description && active.description !== active.tasks.title ? (
+              {active.tasks?.title &&
+              active.description &&
+              active.description !== active.tasks.title ? (
                 <p className="truncate text-xs text-[var(--muted)]">
                   {active.description}
                 </p>
               ) : null}
               <p className="mt-1 font-mono text-lg tabular-nums tracking-tight">
-                {formatDuration(elapsedMs(active.started_at, null, now))}
+                {formatDuration(activeDurationMs)}
               </p>
             </div>
             {interactive ? (
               <button
                 type="button"
-                onClick={() => stop.mutate()}
+                onClick={() =>
+                  stop.mutate(undefined, {
+                    onSuccess: () => showToast("Timer stopped"),
+                  })
+                }
                 disabled={stop.isPending}
                 className="shrink-0 rounded-full bg-[var(--ink)] px-3 py-1.5 text-xs font-medium text-[var(--canvas)] disabled:opacity-50"
               >
@@ -203,30 +331,10 @@ export function TimeTrackingPanel({
             ) : null}
           </div>
         </div>
-      ) : interactive ? (
-        <StartForm
-          description={description}
-          setDescription={setDescription}
-          taskId={taskId}
-          setTaskId={setTaskId}
-          tasks={openTasks.data ?? []}
-          pending={start.isPending}
-          onSubmit={onStart}
-        />
       ) : null}
 
-      {interactive && active ? (
-        <StartForm
-          description={description}
-          setDescription={setDescription}
-          taskId={taskId}
-          setTaskId={setTaskId}
-          tasks={openTasks.data ?? []}
-          pending={start.isPending}
-          onSubmit={onStart}
-          switchMode
-        />
-      ) : null}
+      {modeButtons}
+      {startForm}
 
       {finished.length > 0 ? (
         <ul className="min-h-0 flex-1 space-y-2 overflow-y-auto">
@@ -237,7 +345,9 @@ export function TimeTrackingPanel({
             >
               <div className="min-w-0">
                 <p className="truncate text-sm text-[var(--ink)]">
-                  {entry.tasks?.title || entry.description || "Session"}
+                  {entry.tasks?.title ||
+                    entry.description ||
+                    modeLabel(entry.timer_mode ?? "stopwatch")}
                 </p>
                 {entry.tasks?.title &&
                 entry.description &&
@@ -268,6 +378,43 @@ export function TimeTrackingPanel({
           ))}
         </ul>
       ) : null}
+    </div>
+  );
+}
+
+function PomodoroModeButtons({
+  pomodoro,
+  disabled,
+  onStart,
+}: {
+  pomodoro: ReturnType<typeof resolvePomodoroConfig>;
+  disabled: boolean;
+  onStart: (mode: PomodoroMode) => void;
+}) {
+  return (
+    <div className="grid grid-cols-3 gap-2">
+      {(
+        [
+          ["focus", "Focus", pomodoro.focusMin],
+          ["short_break", "Short break", pomodoro.shortBreakMin],
+          ["long_break", "Long break", pomodoro.longBreakMin],
+        ] as const
+      ).map(([mode, label, minutes]) => (
+        <button
+          key={mode}
+          type="button"
+          disabled={disabled}
+          onClick={() => onStart(mode)}
+          className="rounded-xl border border-[var(--border)] px-2 py-2 text-center transition hover:bg-[var(--surface-soft)] disabled:opacity-50"
+        >
+          <span className="block text-xs font-medium text-[var(--ink)]">
+            {label}
+          </span>
+          <span className="block text-[11px] text-[var(--muted)]">
+            {minutes}m
+          </span>
+        </button>
+      ))}
     </div>
   );
 }

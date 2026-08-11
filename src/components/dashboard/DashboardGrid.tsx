@@ -75,7 +75,7 @@ function renderPanel(
     case "calendar":
       return <CalendarPanel {...common} />;
     case "time":
-      return <TimeTrackingPanel {...common} />;
+      return <TimeTrackingPanel {...common} config={config} />;
     case "sleep":
       return <SleepPanel {...common} />;
     default:
