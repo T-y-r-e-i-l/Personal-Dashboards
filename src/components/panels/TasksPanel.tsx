@@ -35,7 +35,9 @@ export function TasksPanel({
   const [adding, setAdding] = useState(false);
   const [now, setNow] = useState(() => Date.now());
 
+  const interactive = !readOnly;
   const historical = Boolean(readOnly && date && timeZone);
+  const historicalUnavailable = Boolean(readOnly && date && !timeZone);
 
   const tasks = useQuery({
     queryKey: historical
@@ -65,13 +67,14 @@ export function TasksPanel({
       if (error) throw error;
       return data;
     },
+    enabled: !historicalUnavailable,
   });
 
   const running = useQuery({
     queryKey: [TIME_RUNNING_KEY, userId],
     queryFn: () => fetchRunningEntry(supabase, userId),
     refetchInterval: 30_000,
-    enabled: !historical,
+    enabled: interactive,
   });
 
   useEffect(() => {
@@ -149,12 +152,18 @@ export function TasksPanel({
     onError: (err: Error) => showToast(err.message),
   });
 
+  if (historicalUnavailable) {
+    return (
+      <EmptyState message="Completed tasks unavailable for this day." />
+    );
+  }
+
   if (tasks.isLoading) {
     return <p className="text-sm text-[var(--muted)]">Loading…</p>;
   }
 
   const items = tasks.data ?? [];
-  if (items.length === 0 && !(adding && !historical)) {
+  if (items.length === 0 && !(adding && interactive)) {
     return (
       <EmptyState
         message={
@@ -162,8 +171,8 @@ export function TasksPanel({
             ? "No completed tasks for this day."
             : "No tasks yet. Add your first one."
         }
-        actionLabel={historical ? undefined : "Add task"}
-        onAction={historical ? undefined : () => setAdding(true)}
+        actionLabel={interactive ? "Add task" : undefined}
+        onAction={interactive ? () => setAdding(true) : undefined}
       />
     );
   }
@@ -174,7 +183,7 @@ export function TasksPanel({
     <div className="space-y-3">
       <ul className="space-y-2">
         {items.map((task) => {
-          const isRunning = !historical && activeTaskId === task.id;
+          const isRunning = interactive && activeTaskId === task.id;
           return (
             <li
               key={task.id}
@@ -182,12 +191,16 @@ export function TasksPanel({
                 isRunning ? "bg-[var(--surface-soft)]" : ""
               }`}
             >
-              {historical ? (
+              {readOnly ? (
                 <span
                   aria-hidden
-                  className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-[var(--accent)] bg-[var(--accent)] text-white"
+                  className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${
+                    task.status === "done"
+                      ? "border-[var(--accent)] bg-[var(--accent)] text-white"
+                      : "border-[var(--border)]"
+                  }`}
                 >
-                  ✓
+                  {task.status === "done" ? "✓" : ""}
                 </span>
               ) : (
                 <button
@@ -233,7 +246,7 @@ export function TasksPanel({
                   ) : null}
                 </div>
               </div>
-              {!historical && task.status !== "done" ? (
+              {interactive && task.status !== "done" ? (
                 <button
                   type="button"
                   aria-label={isRunning ? "Stop timer" : "Start timer"}
@@ -260,7 +273,7 @@ export function TasksPanel({
         })}
       </ul>
 
-      {!historical && adding ? (
+      {interactive && adding ? (
         <form
           className="flex gap-2"
           onSubmit={(e) => {
@@ -282,7 +295,7 @@ export function TasksPanel({
             Add
           </button>
         </form>
-      ) : !historical ? (
+      ) : interactive ? (
         <button
           type="button"
           onClick={() => setAdding(true)}
