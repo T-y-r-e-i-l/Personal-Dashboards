@@ -40,7 +40,8 @@ export default function LandingPage() {
         </h1>
         <p className="mt-6 max-w-xl text-lg leading-relaxed text-[var(--muted)]">
           Capture thoughts, track habits, and see what matters — in a
-          minimal bento dashboard built for real life.
+          minimal bento dashboard built for real life. Export notes as
+          Markdown (with media) for Obsidian or any Markdown vault.
         </p>
         <div className="mt-10 flex flex-wrap items-center gap-3">
           <Link

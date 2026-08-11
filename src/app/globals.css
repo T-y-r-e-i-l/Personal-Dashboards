@@ -254,11 +254,6 @@ body {
   color: var(--muted);
 }
 
-.markdown-compact {
-  max-height: 180px;
-  overflow: auto;
-}
-
 .markdown-compact .md-block {
   margin: 0.25rem 0;
 }

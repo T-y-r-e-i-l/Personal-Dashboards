@@ -36,9 +36,13 @@ npm run dev
 5. Optional — Google Calendar sync:
    - Create an OAuth 2.0 Web client in [Google Cloud Console](https://console.cloud.google.com/apis/credentials)
    - Enable the **Google Calendar API**
-   - Authorized redirect URI: `http://localhost:3000/api/google/callback`
-   - Set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, and `NEXT_PUBLIC_APP_URL` in `.env.local`
+   - Authorized redirect URIs (must match `NEXT_PUBLIC_APP_URL` exactly):
+     - Local: `http://localhost:3000/api/google/callback`
+     - Production: `https://ghostwriter.day/api/google/callback`
+     - Also add `https://www.ghostwriter.day/api/google/callback` if you use the `www` host
+   - Set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, and `NEXT_PUBLIC_APP_URL` (local: `http://localhost:3000`; production: `https://ghostwriter.day`)
    - In the app: **Settings → Connect Google Calendar**
+   - `Error 400: redirect_uri_mismatch` means the URI Google received is not listed on that OAuth client — fix Console and/or `NEXT_PUBLIC_APP_URL`, then redeploy
 
 6. Optional — Daily LLM blog:
    - Set `SUPABASE_SERVICE_ROLE_KEY`, `CRON_SECRET`, and `AI_GATEWAY_API_KEY` ([Vercel AI Gateway](https://vercel.com/docs/ai-gateway))

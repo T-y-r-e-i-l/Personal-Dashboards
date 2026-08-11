@@ -11,6 +11,11 @@ import {
   useState,
 } from "react";
 import { createClient } from "@/lib/supabase/client";
+import {
+  downloadExport,
+  exportCapturesBulk,
+  exportSingleCapture,
+} from "@/lib/export/buildNotesZip";
 import { uploadNoteMedia } from "@/lib/media/noteMedia";
 import { MarkdownContent } from "@/components/markdown/MarkdownContent";
 import { useToast } from "@/components/ui/Toast";
@@ -68,11 +73,14 @@ export function QuickCapture({ userId }: { userId: string }) {
   const [range, setRange] = useState<NotesRange>("today");
   const [search, setSearch] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const deferredSearch = useDeferredValue(search.trim());
   const fileInputRef = useRef<HTMLInputElement>(null);
   const showToast = useToast((s) => s.show);
   const queryClient = useQueryClient();
   const supabase = createClient();
+  const rangeLabel =
+    RANGE_OPTIONS.find((option) => option.value === range)?.label ?? "notes";
 
   const rangeBounds = useMemo(() => notesRangeBounds(range), [range]);
   const limit = range === "today" ? 50 : range === "all" ? 500 : 100;
@@ -286,6 +294,35 @@ export function QuickCapture({ userId }: { userId: string }) {
     }
   }
 
+  async function onExportVisible() {
+    const notes = recent.data ?? [];
+    if (!notes.length || exporting) return;
+    setExporting(true);
+    try {
+      const result = await exportCapturesBulk(supabase, notes);
+      downloadExport(result);
+      showToast(`Exported ${notes.length} note${notes.length === 1 ? "" : "s"}`);
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Export failed");
+    } finally {
+      setExporting(false);
+    }
+  }
+
+  async function onDownloadNote(item: Capture) {
+    if (exporting) return;
+    setExporting(true);
+    try {
+      const result = await exportSingleCapture(supabase, item);
+      downloadExport(result);
+      showToast("Note downloaded");
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Download failed");
+    } finally {
+      setExporting(false);
+    }
+  }
+
   return (
     <section className="notes-hand w-full">
       <form onSubmit={onSubmit}>
@@ -391,6 +428,17 @@ export function QuickCapture({ userId }: { userId: string }) {
               ))}
             </select>
           </label>
+          <button
+            type="button"
+            onClick={() => void onExportVisible()}
+            disabled={
+              exporting || !recent.data?.length || recent.isLoading
+            }
+            title={`Export ${rangeLabel.toLowerCase()} as Markdown`}
+            className="rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-xs font-medium text-[var(--ink)] transition hover:bg-[var(--surface-soft)] disabled:opacity-50"
+          >
+            {exporting ? "Exporting…" : `Export ${rangeLabel}`}
+          </button>
           {search || range !== "today" ? (
             <button
               type="button"
@@ -422,6 +470,7 @@ export function QuickCapture({ userId }: { userId: string }) {
               uploading={uploading}
               sharing={shareCapture.isPending}
               deleting={deleteCapture.isPending}
+              downloading={exporting}
               onStartEdit={() => setEditingId(item.id)}
               onCancelEdit={() => setEditingId(null)}
               onSave={(text) =>
@@ -438,6 +487,7 @@ export function QuickCapture({ userId }: { userId: string }) {
                 }
               }}
               onShare={() => shareCapture.mutate(item.id)}
+              onDownload={() => void onDownloadNote(item)}
               onAddMedia={(files, setText) =>
                 void onFilesSelected(files, setText)
               }
@@ -464,11 +514,13 @@ function CaptureListItem({
   uploading,
   sharing,
   deleting,
+  downloading,
   onStartEdit,
   onCancelEdit,
   onSave,
   onDelete,
   onShare,
+  onDownload,
   onAddMedia,
 }: {
   item: Capture;
@@ -477,18 +529,22 @@ function CaptureListItem({
   uploading: boolean;
   sharing: boolean;
   deleting: boolean;
+  downloading: boolean;
   onStartEdit: () => void;
   onCancelEdit: () => void;
   onSave: (text: string) => void;
   onDelete: () => void;
   onShare: () => void;
+  onDownload: () => void;
   onAddMedia: (
     files: FileList | null,
     setText: (updater: (prev: string) => string) => void,
   ) => void;
 }) {
   const [draft, setDraft] = useState(item.content);
+  const [menuOpen, setMenuOpen] = useState(false);
   const editFileRef = useRef<HTMLInputElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
   const stamp = item.updated_at || item.created_at;
   const edited =
     Boolean(item.updated_at) &&
@@ -501,6 +557,24 @@ function CaptureListItem({
       setDraft(item.content);
     }
   }, [editing, item.content]);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    function onPointerDown(e: PointerEvent) {
+      if (!menuRef.current?.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    }
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") setMenuOpen(false);
+    }
+    window.addEventListener("pointerdown", onPointerDown);
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("pointerdown", onPointerDown);
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [menuOpen]);
 
   if (editing) {
     return (
@@ -584,30 +658,71 @@ function CaptureListItem({
           {edited ? " · edited" : ""}
           {shared ? " · shared" : ""}
         </time>
-        <div className="flex items-center gap-3">
+        <div className="relative" ref={menuRef}>
           <button
             type="button"
-            onClick={onDelete}
-            disabled={deleting}
-            className="text-xs font-medium text-[var(--muted)] transition hover:text-[var(--ink)] disabled:opacity-50"
+            onClick={() => setMenuOpen((v) => !v)}
+            aria-label="Note actions"
+            aria-haspopup="menu"
+            aria-expanded={menuOpen}
+            className="flex h-8 w-8 items-center justify-center rounded-full text-[var(--muted)] transition hover:bg-[var(--surface-soft)] hover:text-[var(--ink)]"
           >
-            Delete
+            <KebabIcon />
           </button>
-          <button
-            type="button"
-            onClick={onStartEdit}
-            className="text-xs font-medium text-[var(--muted)] transition hover:text-[var(--ink)]"
-          >
-            Edit
-          </button>
-          <button
-            type="button"
-            onClick={onShare}
-            disabled={sharing}
-            className="text-xs font-medium text-[var(--muted)] transition hover:text-[var(--ink)] disabled:opacity-50"
-          >
-            {shared ? "Copy link" : "Share"}
-          </button>
+          {menuOpen ? (
+            <div
+              role="menu"
+              className="absolute right-0 top-full z-20 mt-1 min-w-[9.5rem] rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-1.5 shadow-[var(--shadow-soft)]"
+            >
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setMenuOpen(false);
+                  onStartEdit();
+                }}
+                className="block w-full rounded-xl px-3 py-2 text-left text-xs font-medium text-[var(--ink)] transition hover:bg-[var(--surface-soft)]"
+              >
+                Edit
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setMenuOpen(false);
+                  onDownload();
+                }}
+                disabled={downloading}
+                className="block w-full rounded-xl px-3 py-2 text-left text-xs font-medium text-[var(--ink)] transition hover:bg-[var(--surface-soft)] disabled:opacity-50"
+              >
+                Download
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setMenuOpen(false);
+                  onShare();
+                }}
+                disabled={sharing}
+                className="block w-full rounded-xl px-3 py-2 text-left text-xs font-medium text-[var(--ink)] transition hover:bg-[var(--surface-soft)] disabled:opacity-50"
+              >
+                {shared ? "Copy link" : "Share"}
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setMenuOpen(false);
+                  onDelete();
+                }}
+                disabled={deleting}
+                className="block w-full rounded-xl px-3 py-2 text-left text-xs font-medium text-[var(--ink)] transition hover:bg-[var(--surface-soft)] disabled:opacity-50"
+              >
+                Delete
+              </button>
+            </div>
+          ) : null}
         </div>
       </div>
       <div
@@ -630,6 +745,16 @@ function CaptureListItem({
         <MarkdownContent content={item.content} compact />
       </div>
     </li>
+  );
+}
+
+function KebabIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+      <circle cx="12" cy="5" r="1.75" />
+      <circle cx="12" cy="12" r="1.75" />
+      <circle cx="12" cy="19" r="1.75" />
+    </svg>
   );
 }
 
