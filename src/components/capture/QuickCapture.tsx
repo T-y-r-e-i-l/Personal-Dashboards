@@ -1,8 +1,15 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { FormEvent, useEffect, useRef, useState } from "react";
-import { format } from "date-fns";
+import { endOfDay, format, startOfDay, subDays } from "date-fns";
+import {
+  FormEvent,
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { createClient } from "@/lib/supabase/client";
 import { uploadNoteMedia } from "@/lib/media/noteMedia";
 import { MarkdownContent } from "@/components/markdown/MarkdownContent";
@@ -10,47 +17,111 @@ import { useToast } from "@/components/ui/Toast";
 import type { Capture } from "@/lib/database.types";
 
 type Visibility = "private" | "public";
+type NotesRange = "today" | "7d" | "30d" | "90d" | "all";
+
+const RANGE_OPTIONS: { value: NotesRange; label: string }[] = [
+  { value: "today", label: "Today" },
+  { value: "7d", label: "7 days" },
+  { value: "30d", label: "30 days" },
+  { value: "90d", label: "90 days" },
+  { value: "all", label: "All time" },
+];
+
+function escapeIlike(value: string) {
+  return value.replace(/\\/g, "\\\\").replace(/%/g, "\\%").replace(/_/g, "\\_");
+}
+
+function notesRangeBounds(range: NotesRange): { start: string; end: string } | null {
+  if (range === "all") return null;
+  const now = new Date();
+  const end = endOfDay(now).toISOString();
+  if (range === "today") {
+    return { start: startOfDay(now).toISOString(), end };
+  }
+  const days = range === "7d" ? 7 : range === "30d" ? 30 : 90;
+  return {
+    start: startOfDay(subDays(now, days - 1)).toISOString(),
+    end,
+  };
+}
+
+function mapCaptures(
+  rows: Array<Record<string, unknown>>,
+  fallbackPrivate = false,
+): Capture[] {
+  return rows.map((row) => ({
+    ...row,
+    visibility: (fallbackPrivate
+      ? "private"
+      : ((row.visibility as Visibility | null | undefined) ?? "private")) as Visibility,
+    updated_at:
+      (row.updated_at as string | null | undefined) ??
+      (row.created_at as string),
+  })) as Capture[];
+}
 
 export function QuickCapture({ userId }: { userId: string }) {
   const [content, setContent] = useState("");
   const [success, setSuccess] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [range, setRange] = useState<NotesRange>("today");
+  const [search, setSearch] = useState("");
+  const deferredSearch = useDeferredValue(search.trim());
   const fileInputRef = useRef<HTMLInputElement>(null);
   const showToast = useToast((s) => s.show);
   const queryClient = useQueryClient();
   const supabase = createClient();
 
+  const rangeBounds = useMemo(() => notesRangeBounds(range), [range]);
+  const limit = range === "today" ? 50 : range === "all" ? 500 : 100;
+
   const recent = useQuery({
-    queryKey: ["captures", userId],
+    queryKey: ["captures", userId, range, deferredSearch || null],
     queryFn: async () => {
-      const primary = await supabase
+      let primary = supabase
         .from("captures")
         .select("*")
         .eq("user_id", userId)
         .order("updated_at", { ascending: false })
-        .limit(20);
+        .limit(limit);
 
-      if (!primary.error) {
-        return (primary.data ?? []).map((row) => ({
-          ...row,
-          visibility: (row.visibility ?? "private") as Visibility,
-          updated_at: row.updated_at ?? row.created_at,
-        })) as Capture[];
+      if (rangeBounds) {
+        primary = primary
+          .gte("created_at", rangeBounds.start)
+          .lte("created_at", rangeBounds.end);
+      }
+      if (deferredSearch) {
+        primary = primary.ilike("content", `%${escapeIlike(deferredSearch)}%`);
       }
 
-      const fallback = await supabase
+      const primaryResult = await primary;
+      if (!primaryResult.error) {
+        return mapCaptures(primaryResult.data ?? []);
+      }
+
+      let fallback = supabase
         .from("captures")
         .select("*")
         .eq("user_id", userId)
         .order("created_at", { ascending: false })
-        .limit(20);
-      if (fallback.error) throw fallback.error;
-      return (fallback.data ?? []).map((row) => ({
-        ...row,
-        visibility: "private" as Visibility,
-        updated_at: row.created_at,
-      })) as Capture[];
+        .limit(limit);
+
+      if (rangeBounds) {
+        fallback = fallback
+          .gte("created_at", rangeBounds.start)
+          .lte("created_at", rangeBounds.end);
+      }
+      if (deferredSearch) {
+        fallback = fallback.ilike(
+          "content",
+          `%${escapeIlike(deferredSearch)}%`,
+        );
+      }
+
+      const fallbackResult = await fallback;
+      if (fallbackResult.error) throw fallbackResult.error;
+      return mapCaptures(fallbackResult.data ?? [], true);
     },
   });
 
@@ -220,7 +291,52 @@ export function QuickCapture({ userId }: { userId: string }) {
         </div>
       </form>
 
-      {recent.data && recent.data.length > 0 ? (
+      <div className="mt-4 flex flex-col gap-2 font-[family-name:var(--font-body)] text-sm font-normal sm:flex-row sm:items-center">
+        <label className="relative min-w-0 flex-1">
+          <span className="sr-only">Search notes</span>
+          <input
+            type="search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search notes…"
+            className="w-full rounded-full border border-[var(--border)] bg-[var(--surface)] px-3.5 py-2 text-sm text-[var(--ink)] outline-none placeholder:text-[var(--muted)] focus:border-[var(--ink)]"
+          />
+        </label>
+        <div className="flex shrink-0 items-center gap-2">
+          <label className="flex items-center gap-2">
+            <span className="sr-only">Notes range</span>
+            <select
+              value={range}
+              onChange={(e) => setRange(e.target.value as NotesRange)}
+              className="rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--ink)] outline-none focus:border-[var(--ink)]"
+            >
+              {RANGE_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          {search || range !== "today" ? (
+            <button
+              type="button"
+              onClick={() => {
+                setSearch("");
+                setRange("today");
+              }}
+              className="rounded-full px-2.5 py-2 text-xs font-medium text-[var(--muted)] transition hover:text-[var(--ink)]"
+            >
+              Clear
+            </button>
+          ) : null}
+        </div>
+      </div>
+
+      {recent.isLoading ? (
+        <p className="mt-4 font-[family-name:var(--font-body)] text-sm text-[var(--muted)]">
+          Loading notes…
+        </p>
+      ) : recent.data && recent.data.length > 0 ? (
         <ul className="mt-4 space-y-3">
           {recent.data.map((item) => (
             <CaptureListItem
@@ -243,7 +359,15 @@ export function QuickCapture({ userId }: { userId: string }) {
             />
           ))}
         </ul>
-      ) : null}
+      ) : (
+        <p className="mt-4 font-[family-name:var(--font-body)] text-sm text-[var(--muted)]">
+          {deferredSearch
+            ? "No notes match these filters."
+            : range === "today"
+              ? "No notes yet today."
+              : "No notes in this range."}
+        </p>
+      )}
     </section>
   );
 }
