@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { GhostWriterLogo } from "@/components/brand/GhostWriterLogo";
 
 export default function LandingPage() {
   return (
@@ -12,9 +13,7 @@ export default function LandingPage() {
         }}
       />
       <header className="relative z-10 flex items-center justify-between px-6 py-5 md:px-10">
-        <p className="font-[family-name:var(--font-display)] text-xl tracking-tight">
-          Personal Dashboards
-        </p>
+        <GhostWriterLogo markSize={30} className="text-xl" />
         <div className="flex items-center gap-3">
           <Link
             href="/login"
@@ -32,9 +31,10 @@ export default function LandingPage() {
       </header>
 
       <section className="relative z-10 mx-auto flex w-full max-w-4xl flex-1 flex-col items-start justify-center px-6 pb-24 pt-10 md:px-10">
-        <p className="mb-4 text-sm font-medium uppercase tracking-[0.18em] text-[var(--accent)]">
-          Personal Dashboards
-        </p>
+        <GhostWriterLogo
+          markSize={56}
+          className="mb-6 text-4xl md:text-5xl"
+        />
         <h1 className="max-w-3xl font-[family-name:var(--font-display)] text-5xl leading-[1.05] tracking-tight md:text-7xl">
           Your day, one calm surface.
         </h1>

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
+import { GhostWriterLogo } from "@/components/brand/GhostWriterLogo";
 import { createClient } from "@/lib/supabase/client";
 
 export default function LoginPage() {
@@ -68,11 +69,8 @@ export default function LoginPage() {
   return (
     <main className="flex min-h-screen items-center justify-center px-6">
       <div className="w-full max-w-md animate-fade-up">
-        <Link
-          href="/"
-          className="font-[family-name:var(--font-display)] text-xl tracking-tight"
-        >
-          Personal Dashboards
+        <Link href="/" className="inline-flex text-xl">
+          <GhostWriterLogo markSize={30} className="text-xl" />
         </Link>
         <h1 className="mt-8 font-[family-name:var(--font-display)] text-3xl">
           Welcome back

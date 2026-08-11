@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { GhostWriterLogo } from "@/components/brand/GhostWriterLogo";
 import { SignOutButton } from "@/components/ui/SignOutButton";
 import { useDashboardActions } from "@/components/dashboard/DashboardActionsContext";
 import { AddPanelMenu } from "@/components/dashboard/AddPanelMenu";
@@ -63,39 +64,58 @@ export function AppShell({
     <div className="flex min-h-screen">
       <aside
         className={`sticky top-0 hidden h-screen shrink-0 flex-col border-r border-[var(--border)] bg-[var(--surface)]/70 py-6 backdrop-blur transition-[width] duration-200 ease-out md:flex ${
-          collapsed ? "w-[72px] px-2" : "w-56 px-4"
+          collapsed ? "relative w-[72px] px-2" : "w-56 px-4"
         } ${ready ? "" : "opacity-0"}`}
       >
         <div
-          className={`flex items-start gap-2 ${collapsed ? "flex-col items-center" : "justify-between"}`}
+          className={`flex gap-2 ${
+            collapsed
+              ? "w-full flex-col items-center"
+              : "items-start justify-between"
+          }`}
         >
           {!collapsed ? (
             <Link
               href="/dashboard"
-              className="min-w-0 px-2 font-[family-name:var(--font-display)] text-lg leading-tight tracking-tight"
+              className="min-w-0 px-2 text-lg leading-tight"
             >
-              Personal Dashboards
+              <GhostWriterLogo markSize={26} className="text-lg" />
             </Link>
           ) : (
             <Link
               href="/dashboard"
-              aria-label="Personal Dashboards"
-              className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--ink)] font-[family-name:var(--font-display)] text-sm text-[var(--canvas)]"
+              aria-label="Ghost Writer"
+              className="flex items-center justify-center"
             >
-              P
+              <GhostWriterLogo markOnly markSize={28} />
             </Link>
           )}
+          {!collapsed ? (
+            <button
+              type="button"
+              onClick={toggle}
+              aria-label="Collapse sidebar"
+              aria-expanded
+              className="rounded-xl p-2 text-[var(--muted)] transition hover:bg-[var(--surface-soft)] hover:text-[var(--ink)]"
+              title="Collapse"
+            >
+              <CollapseIcon collapsed={false} />
+            </button>
+          ) : null}
+        </div>
+
+        {collapsed ? (
           <button
             type="button"
             onClick={toggle}
-            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-            aria-expanded={!collapsed}
-            className="rounded-xl p-2 text-[var(--muted)] transition hover:bg-[var(--surface-soft)] hover:text-[var(--ink)]"
-            title={collapsed ? "Expand" : "Collapse"}
+            aria-label="Expand sidebar"
+            aria-expanded={false}
+            className="absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 rounded-xl p-2 text-[var(--muted)] transition hover:bg-[var(--surface-soft)] hover:text-[var(--ink)]"
+            title="Expand"
           >
-            <CollapseIcon collapsed={collapsed} />
+            <CollapseIcon collapsed />
           </button>
-        </div>
+        ) : null}
 
         <nav
           className={`mt-10 flex flex-1 flex-col gap-1 ${collapsed ? "items-center" : ""}`}
@@ -169,11 +189,8 @@ export function AppShell({
 
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="flex items-center justify-between border-b border-[var(--border)] px-4 py-3 md:hidden">
-          <Link
-            href="/dashboard"
-            className="font-[family-name:var(--font-display)] text-lg"
-          >
-            Personal Dashboards
+          <Link href="/dashboard" className="text-lg">
+            <GhostWriterLogo markSize={24} className="text-lg" />
           </Link>
           <button
             type="button"

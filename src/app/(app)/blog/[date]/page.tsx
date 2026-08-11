@@ -82,7 +82,7 @@ export default async function BlogPostPage({
                 key={note.id}
                 className="border-b border-[var(--border)]/70 pb-4 last:border-0"
               >
-                <div className="mb-2 flex items-center justify-between gap-3">
+                <div className="mb-2 flex items-center justify-between gap-3 font-[family-name:var(--font-body)] text-sm font-normal">
                   <time className="text-xs text-[var(--muted)]">
                     {format(new Date(note.created_at), "h:mm a")}
                   </time>
@@ -90,7 +90,9 @@ export default async function BlogPostPage({
                     {note.visibility}
                   </span>
                 </div>
-                <MarkdownContent content={note.content} />
+                <div className="notes-hand markdown-body">
+                  <MarkdownContent content={note.content} />
+                </div>
               </li>
             ))}
           </ul>

@@ -1,4 +1,4 @@
--- Personal Dashboards MVP schema
+-- Ghost Writer MVP schema
 
 create extension if not exists "pgcrypto";
 

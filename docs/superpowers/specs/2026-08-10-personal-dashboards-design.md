@@ -1,10 +1,10 @@
-# Personal Dashboards — Design Spec
+# Ghost Writer — Design Spec
 
 **Date:** 2026-08-10  
 **Status:** Approved for MVP implementation
 
 ## Product
-Personal Dashboards is a customizable personal life dashboard SaaS. Users own their data in Supabase (first-party). No Obsidian / vault integration in MVP.
+Ghost Writer is a customizable personal life dashboard SaaS. Users own their data in Supabase (first-party). No Obsidian / vault integration in MVP.
 
 ## Stack
 Next.js App Router, TypeScript, Tailwind, react-grid-layout, TanStack Query, Zustand, Supabase Auth + Postgres + RLS, Vercel.

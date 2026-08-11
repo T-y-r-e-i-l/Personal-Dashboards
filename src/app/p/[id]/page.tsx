@@ -3,6 +3,7 @@ import { format } from "date-fns";
 import { createClient } from "@/lib/supabase/server";
 import { formatPostDateTitle } from "@/lib/blog/dayRange";
 import { parseNotesSnapshot } from "@/lib/blog/notesSnapshot";
+import { GhostWriterLogo } from "@/components/brand/GhostWriterLogo";
 import { MarkdownContent } from "@/components/markdown/MarkdownContent";
 
 const UUID_RE =
@@ -34,9 +35,7 @@ export default async function PublicBlogPostPage({
 
   return (
     <main className="mx-auto min-h-screen w-full max-w-2xl px-6 py-14">
-      <p className="text-xs uppercase tracking-[0.2em] text-[var(--muted)]">
-        Personal Dashboards
-      </p>
+      <GhostWriterLogo markSize={22} className="text-sm text-[var(--muted)]" />
       <h1 className="mt-3 font-[family-name:var(--font-display)] text-4xl tracking-tight">
         {formatPostDateTitle(post.post_date)}
       </h1>
@@ -53,13 +52,15 @@ export default async function PublicBlogPostPage({
       {notes.length > 0 ? (
         <section className="mt-12 border-t border-[var(--border)] pt-8">
           <h2 className="mb-4 text-sm font-semibold tracking-tight">Notes</h2>
-          <ul className="space-y-6">
+          <ul className="notes-hand space-y-6">
             {notes.map((note) => (
               <li key={note.id}>
-                <time className="mb-2 block text-xs text-[var(--muted)]">
+                <time className="mb-2 block font-[family-name:var(--font-body)] text-xs font-normal text-[var(--muted)]">
                   {format(new Date(note.created_at), "h:mm a")}
                 </time>
-                <MarkdownContent content={note.content} />
+                <div className="markdown-body">
+                  <MarkdownContent content={note.content} />
+                </div>
               </li>
             ))}
           </ul>

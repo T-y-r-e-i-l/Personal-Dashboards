@@ -1,4 +1,4 @@
-# Personal Dashboards
+# Ghost Writer
 
 A calm, capture-first personal dashboard built with Next.js and Supabase.
 

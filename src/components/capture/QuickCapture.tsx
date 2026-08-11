@@ -169,14 +169,14 @@ export function QuickCapture({ userId }: { userId: string }) {
   }
 
   return (
-    <section className="w-full">
+    <section className="notes-hand w-full">
       <form onSubmit={onSubmit}>
         <div
           className={`rounded-[24px] border border-[var(--border)] bg-[var(--surface)] p-4 shadow-[var(--shadow-soft)] ${
             success ? "capture-success" : ""
           }`}
         >
-          <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-3 font-[family-name:var(--font-body)] text-sm font-normal">
             <ModeTabs mode={mode} onChange={setMode} />
             <VisibilityToggle value={visibility} onChange={setVisibility} />
           </div>
@@ -193,21 +193,21 @@ export function QuickCapture({ userId }: { userId: string }) {
               }}
               rows={4}
               placeholder="Capture a thought..."
-              className="w-full resize-y bg-transparent font-mono text-sm leading-relaxed outline-none placeholder:font-[family-name:var(--font-body)] placeholder:text-[var(--muted)]"
+              className="w-full resize-y bg-transparent outline-none placeholder:text-[var(--muted)]"
             />
           ) : (
             <div className="markdown-body min-h-[104px] rounded-2xl bg-[var(--canvas)]/60 px-3 py-2">
               {content.trim() ? (
                 <MarkdownContent content={content} />
               ) : (
-                <p className="text-sm text-[var(--muted)]">
+                <p className="text-[var(--muted)]">
                   Nothing to preview yet. Switch to Markdown or attach media.
                 </p>
               )}
             </div>
           )}
 
-          <div className="mt-3 flex items-center justify-between gap-3">
+          <div className="mt-3 flex items-center justify-between gap-3 font-[family-name:var(--font-body)] text-sm font-normal">
             <div className="flex items-center gap-2">
               <p className="text-xs text-[var(--muted)]">⌘/Ctrl + Enter</p>
               <input
@@ -318,7 +318,7 @@ function CaptureListItem({
     return (
       <li className="border-b border-[var(--border)]/70 pb-3 last:border-0 last:pb-0">
         <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-3">
-          <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-3 font-[family-name:var(--font-body)] text-sm font-normal">
             <ModeTabs mode={mode} onChange={setMode} />
             <div className="flex items-center gap-3">
               <VisibilityToggle value={visibility} onChange={setVisibility} />
@@ -342,7 +342,7 @@ function CaptureListItem({
                 if (e.key === "Escape") onCancelEdit();
               }}
               rows={5}
-              className="w-full resize-y bg-transparent font-mono text-sm leading-relaxed outline-none"
+              className="w-full resize-y bg-transparent outline-none"
               autoFocus
             />
           ) : (
@@ -350,12 +350,12 @@ function CaptureListItem({
               {draft.trim() ? (
                 <MarkdownContent content={draft} />
               ) : (
-                <p className="text-sm text-[var(--muted)]">Nothing to preview.</p>
+                <p className="text-[var(--muted)]">Nothing to preview.</p>
               )}
             </div>
           )}
 
-          <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 font-[family-name:var(--font-body)] text-sm font-normal">
             <div className="flex items-center gap-2">
               <input
                 ref={editFileRef}
@@ -407,12 +407,12 @@ function CaptureListItem({
       <button
         type="button"
         onClick={onStartEdit}
-        className="markdown-body min-w-0 flex-1 rounded-xl text-left text-sm text-[var(--ink)] outline-none transition hover:bg-[var(--surface-soft)]/70 focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+        className="markdown-body min-w-0 flex-1 rounded-xl text-left text-[var(--ink)] outline-none transition hover:bg-[var(--surface-soft)]/70 focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
         title="Edit note"
       >
         <MarkdownContent content={item.content} compact />
       </button>
-      <div className="flex shrink-0 flex-col items-end gap-2 pt-0.5">
+      <div className="flex shrink-0 flex-col items-end gap-2 pt-0.5 font-[family-name:var(--font-body)] text-sm font-normal">
         <time className="text-xs text-[var(--muted)]">
           {format(new Date(stamp), "MMM d · h:mm a")}
           {edited ? " · edited" : ""}
