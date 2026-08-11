@@ -28,34 +28,51 @@ const BREAKPOINTS = { lg: 768, xs: 0 } as const;
 const COLS = { lg: 12, xs: 1 } as const;
 const MOBILE_BREAKPOINT = BREAKPOINTS.lg;
 
+export type WeatherSnapshot = {
+  location: string;
+  temp: number;
+  description: string;
+};
+
 function renderPanel(
   type: PanelType,
   userId: string,
   location: string | null,
   config: PanelConfig,
+  options: {
+    date?: string;
+    readOnly?: boolean;
+    weatherSnapshot?: WeatherSnapshot | null;
+  },
 ) {
+  const common = {
+    userId,
+    date: options.date,
+    readOnly: options.readOnly,
+  };
   switch (type) {
     case "tasks":
-      return <TasksPanel userId={userId} />;
+      return <TasksPanel {...common} />;
     case "habits":
-      return <HabitsPanel userId={userId} />;
+      return <HabitsPanel {...common} />;
     case "mood":
-      return <MoodPanel userId={userId} />;
+      return <MoodPanel {...common} />;
     case "priorities":
-      return <PrioritiesPanel userId={userId} />;
+      return <PrioritiesPanel {...common} />;
     case "water":
-      return <WaterPanel userId={userId} />;
+      return <WaterPanel {...common} />;
     case "weather":
       return (
         <WeatherPanel
-          userId={userId}
+          {...common}
           location={config.location || location}
+          weatherSnapshot={options.weatherSnapshot}
         />
       );
     case "calendar":
-      return <CalendarPanel userId={userId} />;
+      return <CalendarPanel {...common} />;
     case "time":
-      return <TimeTrackingPanel userId={userId} />;
+      return <TimeTrackingPanel {...common} />;
     default:
       return null;
   }
@@ -68,6 +85,9 @@ export function DashboardGrid({
   onLayoutChange,
   onRemovePanel,
   onUpdateConfig,
+  readOnly = false,
+  date,
+  weatherSnapshot,
 }: {
   userId: string;
   location: string | null;
@@ -75,6 +95,9 @@ export function DashboardGrid({
   onLayoutChange: (layout: Layout) => void;
   onRemovePanel: (panelId: string) => void;
   onUpdateConfig: (panelId: string, config: PanelConfig) => void;
+  readOnly?: boolean;
+  date?: string;
+  weatherSnapshot?: WeatherSnapshot | null;
 }) {
   const { width, containerRef, mounted } = useContainerWidth({
     measureBeforeMount: true,
@@ -82,6 +105,11 @@ export function DashboardGrid({
   const [configPanelId, setConfigPanelId] = useState<string | null>(null);
   const [expandedPanelId, setExpandedPanelId] = useState<string | null>(null);
   const isMobile = mounted && width > 0 && width < MOBILE_BREAKPOINT;
+
+  const panelOptions = useMemo(
+    () => ({ date, readOnly, weatherSnapshot }),
+    [date, readOnly, weatherSnapshot],
+  );
 
   const lgLayout: Layout = useMemo(
     () =>
@@ -110,18 +138,21 @@ export function DashboardGrid({
 
   const handleLayoutChange = useCallback(
     (_current: Layout, allLayouts: { lg?: Layout; xs?: Layout }) => {
+      if (readOnly) return;
       // Never persist the stacked mobile layout back to the database.
       if (width < MOBILE_BREAKPOINT) return;
       if (allLayouts.lg) onLayoutChange(allLayouts.lg);
     },
-    [onLayoutChange, width],
+    [onLayoutChange, readOnly, width],
   );
 
   function togglePanel(panelId: string) {
     setExpandedPanelId((current) => (current === panelId ? null : panelId));
   }
 
-  const configuring = panels.find((p) => p.id === configPanelId);
+  const configuring = !readOnly
+    ? panels.find((p) => p.id === configPanelId)
+    : undefined;
 
   if (panels.length === 0) {
     return (
@@ -154,12 +185,22 @@ export function DashboardGrid({
                   collapsible
                   collapsed={collapsed}
                   onToggleCollapse={() => togglePanel(panel.id)}
-                  onConfigure={() => setConfigPanelId(panel.id)}
-                  onRemove={() => onRemovePanel(panel.id)}
+                  onConfigure={
+                    readOnly ? undefined : () => setConfigPanelId(panel.id)
+                  }
+                  onRemove={
+                    readOnly ? undefined : () => onRemovePanel(panel.id)
+                  }
                 >
                   {!collapsed ? (
                     <PanelErrorBoundary title={PANEL_META[type]?.label}>
-                      {renderPanel(type, userId, location, config)}
+                      {renderPanel(
+                        type,
+                        userId,
+                        location,
+                        config,
+                        panelOptions,
+                      )}
                     </PanelErrorBoundary>
                   ) : null}
                 </PanelChrome>
@@ -178,12 +219,12 @@ export function DashboardGrid({
           margin={[16, 16]}
           containerPadding={[0, 0]}
           dragConfig={{
-            enabled: true,
+            enabled: !readOnly,
             handle: ".panel-drag-handle",
             cancel: "button, input, textarea, select, a",
           }}
           resizeConfig={{
-            enabled: true,
+            enabled: !readOnly,
             handles: ["se"],
           }}
           compactor={verticalCompactor}
@@ -194,15 +235,35 @@ export function DashboardGrid({
             const config = (panel.config ?? {}) as PanelConfig;
             return (
               <div key={panel.id} className="dashboard-grid-item">
-                <div className="panel-drag-handle h-full w-full cursor-grab active:cursor-grabbing">
+                <div
+                  className={`panel-drag-handle h-full w-full ${
+                    readOnly
+                      ? "cursor-default"
+                      : "cursor-grab active:cursor-grabbing"
+                  }`}
+                >
                   <div className="h-full w-full animate-panel-fade">
                     <PanelChrome
                       panelType={type}
-                      onConfigure={() => setConfigPanelId(panel.id)}
-                      onRemove={() => onRemovePanel(panel.id)}
+                      onConfigure={
+                        readOnly
+                          ? undefined
+                          : () => setConfigPanelId(panel.id)
+                      }
+                      onRemove={
+                        readOnly
+                          ? undefined
+                          : () => onRemovePanel(panel.id)
+                      }
                     >
                       <PanelErrorBoundary title={PANEL_META[type]?.label}>
-                        {renderPanel(type, userId, location, config)}
+                        {renderPanel(
+                          type,
+                          userId,
+                          location,
+                          config,
+                          panelOptions,
+                        )}
                       </PanelErrorBoundary>
                     </PanelChrome>
                   </div>

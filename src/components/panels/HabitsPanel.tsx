@@ -8,7 +8,13 @@ import { computeStreak, lastNDays } from "@/lib/utils/habits";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useToast } from "@/components/ui/Toast";
 
-export function HabitsPanel({ userId }: { userId: string }) {
+export function HabitsPanel({
+  userId,
+}: {
+  userId: string;
+  date?: string;
+  readOnly?: boolean;
+}) {
   const supabase = createClient();
   const queryClient = useQueryClient();
   const showToast = useToast((s) => s.show);

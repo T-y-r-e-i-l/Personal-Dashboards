@@ -6,7 +6,13 @@ import { createClient } from "@/lib/supabase/client";
 import { waterProgress } from "@/lib/utils/habits";
 import { useToast } from "@/components/ui/Toast";
 
-export function WaterPanel({ userId }: { userId: string }) {
+export function WaterPanel({
+  userId,
+}: {
+  userId: string;
+  date?: string;
+  readOnly?: boolean;
+}) {
   const supabase = createClient();
   const queryClient = useQueryClient();
   const showToast = useToast((s) => s.show);

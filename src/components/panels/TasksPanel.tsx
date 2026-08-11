@@ -16,7 +16,13 @@ import {
   stopRunningEntry,
 } from "@/lib/time/entries";
 
-export function TasksPanel({ userId }: { userId: string }) {
+export function TasksPanel({
+  userId,
+}: {
+  userId: string;
+  date?: string;
+  readOnly?: boolean;
+}) {
   const supabase = createClient();
   const queryClient = useQueryClient();
   const showToast = useToast((s) => s.show);

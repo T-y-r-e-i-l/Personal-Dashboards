@@ -18,7 +18,13 @@ import {
   type TimeEntryRow,
 } from "@/lib/time/entries";
 
-export function TimeTrackingPanel({ userId }: { userId: string }) {
+export function TimeTrackingPanel({
+  userId,
+}: {
+  userId: string;
+  date?: string;
+  readOnly?: boolean;
+}) {
   const supabase = createClient();
   const queryClient = useQueryClient();
   const showToast = useToast((s) => s.show);

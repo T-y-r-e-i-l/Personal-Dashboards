@@ -9,7 +9,13 @@ import { useToast } from "@/components/ui/Toast";
 
 const TIERS = ["must", "should", "nice"] as const;
 
-export function PrioritiesPanel({ userId }: { userId: string }) {
+export function PrioritiesPanel({
+  userId,
+}: {
+  userId: string;
+  date?: string;
+  readOnly?: boolean;
+}) {
   const supabase = createClient();
   const queryClient = useQueryClient();
   const showToast = useToast((s) => s.show);

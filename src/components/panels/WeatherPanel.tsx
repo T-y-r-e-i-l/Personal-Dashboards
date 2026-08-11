@@ -22,6 +22,13 @@ export function WeatherPanel({
 }: {
   userId?: string;
   location?: string | null;
+  date?: string;
+  readOnly?: boolean;
+  weatherSnapshot?: {
+    location: string;
+    temp: number;
+    description: string;
+  } | null;
 }) {
   const showToast = useToast((s) => s.show);
   const [savedLocation, setSavedLocation] = useState(location?.trim() || "");

@@ -14,7 +14,13 @@ type GoogleEvent = {
   html_link?: string;
 };
 
-export function CalendarPanel({ userId: _userId }: { userId: string }) {
+export function CalendarPanel({
+  userId: _userId,
+}: {
+  userId: string;
+  date?: string;
+  readOnly?: boolean;
+}) {
   const router = useRouter();
   const start = startOfDay(new Date()).toISOString();
   const end = endOfDay(new Date()).toISOString();
