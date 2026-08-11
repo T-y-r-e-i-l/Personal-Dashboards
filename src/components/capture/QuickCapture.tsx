@@ -66,20 +66,38 @@ export function QuickCapture({ userId }: { userId: string }) {
       visibility: Visibility;
     }) => {
       const now = new Date().toISOString();
-      const withVisibility = await supabase.from("captures").insert({
-        user_id: userId,
-        content: text,
-        visibility: noteVisibility,
-        updated_at: now,
-      });
-      if (!withVisibility.error) return;
+      const attempts = [
+        {
+          user_id: userId,
+          content: text,
+          visibility: noteVisibility,
+          updated_at: now,
+        },
+        {
+          user_id: userId,
+          content: text,
+          visibility: noteVisibility,
+        },
+        {
+          user_id: userId,
+          content: text,
+          updated_at: now,
+        },
+        {
+          user_id: userId,
+          content: text,
+        },
+      ] as const;
 
-      const basic = await supabase.from("captures").insert({
-        user_id: userId,
-        content: text,
-        updated_at: now,
-      });
-      if (basic.error) throw basic.error;
+      let lastError: Error | null = null;
+      for (const row of attempts) {
+        const { error } = await supabase.from("captures").insert(row);
+        if (!error) return;
+        lastError = error;
+        // Retry only for missing-column / schema-cache drift.
+        if (!/column|schema cache/i.test(error.message)) throw error;
+      }
+      throw lastError ?? new Error("Failed to save capture");
     },
     onSuccess: async () => {
       setContent("");
@@ -104,24 +122,25 @@ export function QuickCapture({ userId }: { userId: string }) {
       visibility: Visibility;
     }) => {
       const now = new Date().toISOString();
-      const withStamp = await supabase
-        .from("captures")
-        .update({
-          content: text,
-          visibility: noteVisibility,
-          updated_at: now,
-        })
-        .eq("id", id)
-        .eq("user_id", userId);
+      const attempts = [
+        { content: text, visibility: noteVisibility, updated_at: now },
+        { content: text, visibility: noteVisibility },
+        { content: text, updated_at: now },
+        { content: text },
+      ] as const;
 
-      if (!withStamp.error) return;
-
-      const contentOnly = await supabase
-        .from("captures")
-        .update({ content: text, updated_at: now })
-        .eq("id", id)
-        .eq("user_id", userId);
-      if (contentOnly.error) throw contentOnly.error;
+      let lastError: Error | null = null;
+      for (const patch of attempts) {
+        const { error } = await supabase
+          .from("captures")
+          .update(patch)
+          .eq("id", id)
+          .eq("user_id", userId);
+        if (!error) return;
+        lastError = error;
+        if (!/column|schema cache/i.test(error.message)) throw error;
+      }
+      throw lastError ?? new Error("Failed to update note");
     },
     onSuccess: async () => {
       setEditingId(null);
