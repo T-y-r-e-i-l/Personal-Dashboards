@@ -103,20 +103,29 @@ export async function startTimer(
 ): Promise<TimeEntryRow> {
   await stopRunningEntry(supabase, userId);
 
+  const mode = timerMode ?? "stopwatch";
+  const baseRow = {
+    user_id: userId,
+    task_id: taskId ?? null,
+    description: (description ?? "").trim(),
+    ended_at: null as null,
+  };
+  // Omit Pomodoro columns for stopwatch so Start works before migration.
+  const insertRow =
+    mode === "stopwatch"
+      ? baseRow
+      : {
+          ...baseRow,
+          timer_mode: mode,
+          planned_seconds: plannedSeconds ?? null,
+        };
+
   const startedAt = new Date().toISOString();
   const { data, error } = await supabase
     .from("time_entries")
     .insert({
-      user_id: userId,
-      task_id: taskId ?? null,
-      description: (description ?? "").trim(),
+      ...insertRow,
       started_at: startedAt,
-      ended_at: null,
-      timer_mode: timerMode ?? "stopwatch",
-      planned_seconds:
-        timerMode && timerMode !== "stopwatch"
-          ? (plannedSeconds ?? null)
-          : null,
     })
     .select("*, tasks(title)")
     .single();
@@ -128,16 +137,8 @@ export async function startTimer(
       const retry = await supabase
         .from("time_entries")
         .insert({
-          user_id: userId,
-          task_id: taskId ?? null,
-          description: (description ?? "").trim(),
+          ...insertRow,
           started_at: new Date().toISOString(),
-          ended_at: null,
-          timer_mode: timerMode ?? "stopwatch",
-          planned_seconds:
-            timerMode && timerMode !== "stopwatch"
-              ? (plannedSeconds ?? null)
-              : null,
         })
         .select("*, tasks(title)")
         .single();

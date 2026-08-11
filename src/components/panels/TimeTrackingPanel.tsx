@@ -32,7 +32,7 @@ import {
 type PomodoroMode = Exclude<TimerMode, "stopwatch">;
 
 function isSchemaMigrationError(message: string): boolean {
-  return /column|schema cache|timer_mode|planned_seconds/i.test(message);
+  return /schema cache|timer_mode|planned_seconds/i.test(message);
 }
 
 function requestNotificationPermissionOnce() {
@@ -220,12 +220,13 @@ export function TimeTrackingPanel({
       return;
     }
     if (autoCompletedId.current === active.id) return;
-    autoCompletedId.current = active.id;
+    if (stop.isPending) return;
     const mode = (active.timer_mode ?? "focus") as TimerMode;
     const toastText = completeToastMessage(mode);
     const notifyBody = active.description || modeLabel(mode);
     stop.mutate(undefined, {
       onSuccess: () => {
+        autoCompletedId.current = active.id;
         showToast(toastText);
         if (
           typeof Notification !== "undefined" &&
