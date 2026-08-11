@@ -4,7 +4,7 @@ import {
   formatMoodActivity,
   formatTimeTrackedActivity,
   formatTodoCompletedActivity,
-} from "./logActivity.ts";
+} from "./logActivity";
 
 describe("formatMoodActivity", () => {
   it("includes note and metrics", () => {
