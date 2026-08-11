@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import ReactMarkdown, { defaultUrlTransform } from "react-markdown";
 import { createClient } from "@/lib/supabase/client";
 import {
@@ -64,6 +65,26 @@ function MediaImage({
   compact?: boolean;
 }) {
   const { url, error, loading } = useSignedUrl(src);
+  const [open, setOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false);
+    }
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [open]);
 
   if (!src) return null;
 
@@ -84,14 +105,63 @@ function MediaImage({
   }
 
   return (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
-      src={url}
-      alt={alt ?? ""}
-      className={`my-2 max-w-full rounded-xl border border-[var(--border)] object-contain ${
-        compact ? "max-h-36" : "max-h-72"
-      }`}
-    />
+    <>
+      <button
+        type="button"
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          setOpen(true);
+        }}
+        className="my-2 block w-fit max-w-full cursor-zoom-in rounded-xl border-0 bg-transparent p-0 text-left"
+        aria-label={alt ? `View larger: ${alt}` : "View larger image"}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={url}
+          alt={alt ?? ""}
+          className={`max-w-full rounded-xl border border-[var(--border)] object-contain ${
+            compact ? "max-h-36" : "max-h-72"
+          }`}
+        />
+      </button>
+
+      {mounted && open
+        ? createPortal(
+            <div
+              className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--ink)]/70 p-4 backdrop-blur-sm"
+              role="dialog"
+              aria-modal="true"
+              aria-label={alt ? `Image: ${alt}` : "Image preview"}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setOpen(false);
+              }}
+            >
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setOpen(false);
+                }}
+                className="absolute right-4 top-4 rounded-full bg-[var(--surface)] px-3 py-1.5 text-sm font-medium text-[var(--ink)] shadow-sm"
+              >
+                Close
+              </button>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={url}
+                alt={alt ?? ""}
+                onClick={(e) => e.stopPropagation()}
+                className="max-h-[90vh] max-w-[min(96vw,1200px)] rounded-xl object-contain shadow-2xl"
+              />
+            </div>,
+            document.body,
+          )
+        : null}
+    </>
   );
 }
 
