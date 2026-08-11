@@ -1,11 +1,40 @@
 import { notFound } from "next/navigation";
 import { format } from "date-fns";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { GhostWriterLogo } from "@/components/brand/GhostWriterLogo";
 import { MarkdownContent } from "@/components/markdown/MarkdownContent";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+async function fetchSharedNote(id: string) {
+  const select =
+    "id, content, created_at, updated_at, visibility" as const;
+
+  // Prefer service role so unlisted public notes work even before/without
+  // the captures_public_read RLS policy being applied.
+  try {
+    const admin = createAdminClient();
+    const result = await admin
+      .from("captures")
+      .select(select)
+      .eq("id", id)
+      .eq("visibility", "public")
+      .maybeSingle();
+    if (!result.error) return result;
+  } catch {
+    // Missing SUPABASE_SERVICE_ROLE_KEY in local/dev — fall through.
+  }
+
+  const supabase = await createClient();
+  return supabase
+    .from("captures")
+    .select(select)
+    .eq("id", id)
+    .eq("visibility", "public")
+    .maybeSingle();
+}
 
 export default async function SharedNotePage({
   params,
@@ -15,14 +44,7 @@ export default async function SharedNotePage({
   const { id } = await params;
   if (!UUID_RE.test(id)) notFound();
 
-  const supabase = await createClient();
-  const { data: note, error } = await supabase
-    .from("captures")
-    .select("id, content, created_at, updated_at, visibility")
-    .eq("id", id)
-    .eq("visibility", "public")
-    .maybeSingle();
-
+  const { data: note, error } = await fetchSharedNote(id);
   if (error || !note) notFound();
 
   const stamp = note.updated_at || note.created_at;
