@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { PanelConfig, PanelType } from "@/lib/panels/types";
 import { PANEL_META } from "@/lib/panels/types";
 import { HabitsSettingsList } from "@/components/dashboard/HabitsSettingsList";
+import { resolvePomodoroConfig } from "@/lib/time/pomodoro";
 
 const ALL_PANEL_TYPES = Object.keys(PANEL_META) as PanelType[];
 
@@ -123,7 +124,87 @@ export function PanelConfigModal({
             </label>
           )}
 
-          {!["habits", "mood", "tasks", "weather"].includes(panelType) && (
+          {panelType === "time" && (
+            <div className="space-y-3">
+              <span className="block text-sm font-medium">Pomodoro lengths</span>
+              <label className="block text-sm">
+                <span className="mb-1.5 block font-medium">
+                  Focus (minutes)
+                </span>
+                <input
+                  type="number"
+                  min={1}
+                  step={1}
+                  value={
+                    config.pomodoroFocusMin ??
+                    resolvePomodoroConfig(config).focusMin
+                  }
+                  onChange={(e) =>
+                    setConfig((c) => ({
+                      ...c,
+                      pomodoroFocusMin:
+                        e.target.value === ""
+                          ? undefined
+                          : Number(e.target.value),
+                    }))
+                  }
+                  className="w-full rounded-xl border border-[var(--border)] px-3 py-2"
+                />
+              </label>
+              <label className="block text-sm">
+                <span className="mb-1.5 block font-medium">
+                  Short break (minutes)
+                </span>
+                <input
+                  type="number"
+                  min={1}
+                  step={1}
+                  value={
+                    config.pomodoroShortBreakMin ??
+                    resolvePomodoroConfig(config).shortBreakMin
+                  }
+                  onChange={(e) =>
+                    setConfig((c) => ({
+                      ...c,
+                      pomodoroShortBreakMin:
+                        e.target.value === ""
+                          ? undefined
+                          : Number(e.target.value),
+                    }))
+                  }
+                  className="w-full rounded-xl border border-[var(--border)] px-3 py-2"
+                />
+              </label>
+              <label className="block text-sm">
+                <span className="mb-1.5 block font-medium">
+                  Long break (minutes)
+                </span>
+                <input
+                  type="number"
+                  min={1}
+                  step={1}
+                  value={
+                    config.pomodoroLongBreakMin ??
+                    resolvePomodoroConfig(config).longBreakMin
+                  }
+                  onChange={(e) =>
+                    setConfig((c) => ({
+                      ...c,
+                      pomodoroLongBreakMin:
+                        e.target.value === ""
+                          ? undefined
+                          : Number(e.target.value),
+                    }))
+                  }
+                  className="w-full rounded-xl border border-[var(--border)] px-3 py-2"
+                />
+              </label>
+            </div>
+          )}
+
+          {!["habits", "mood", "tasks", "weather", "time"].includes(
+            panelType,
+          ) && (
             <p className="text-sm text-[var(--muted)]">
               No extra settings for this panel yet. You can still resize it on
               the grid.
@@ -180,7 +261,19 @@ export function PanelConfigModal({
                   onSwap(swapType);
                   return;
                 }
-                onSave(config);
+                const next =
+                  panelType === "time"
+                    ? (() => {
+                        const resolved = resolvePomodoroConfig(config);
+                        return {
+                          ...config,
+                          pomodoroFocusMin: resolved.focusMin,
+                          pomodoroShortBreakMin: resolved.shortBreakMin,
+                          pomodoroLongBreakMin: resolved.longBreakMin,
+                        };
+                      })()
+                    : config;
+                onSave(next);
               }}
               className="rounded-full bg-[var(--ink)] px-4 py-2 text-sm font-medium text-[var(--canvas)]"
             >
