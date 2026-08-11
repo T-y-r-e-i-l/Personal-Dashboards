@@ -8,6 +8,10 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { useToast } from "@/components/ui/Toast";
 import { getDayRangeForDate } from "@/lib/blog/dayRange";
 import {
+  formatTodoCompletedActivity,
+  logActivity,
+} from "@/lib/activity/logActivity";
+import {
   TIME_ENTRIES_KEY,
   TIME_RUNNING_KEY,
   elapsedMs,
@@ -104,6 +108,7 @@ export function TasksPanel({
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: [TIME_RUNNING_KEY, userId] }),
       queryClient.invalidateQueries({ queryKey: [TIME_ENTRIES_KEY, userId] }),
+      queryClient.invalidateQueries({ queryKey: ["captures", userId] }),
     ]);
   }
 
@@ -111,20 +116,42 @@ export function TasksPanel({
     mutationFn: async ({
       id,
       status,
+      title,
     }: {
       id: string;
       status: "todo" | "done";
+      title: string;
     }) => {
+      const next = status === "done" ? "todo" : "done";
+      const completedAt = new Date().toISOString();
       const { error } = await supabase
         .from("tasks")
         .update({
-          status: status === "done" ? "todo" : "done",
-          updated_at: new Date().toISOString(),
+          status: next,
+          updated_at: completedAt,
         })
         .eq("id", id);
       if (error) throw error;
+
+      if (next === "done") {
+        await logActivity(supabase, {
+          userId,
+          kind: "todo",
+          at: completedAt,
+          content: formatTodoCompletedActivity(title),
+        });
+      }
+
+      return { completed: next === "done" };
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["tasks", userId] }),
+    onSuccess: async (result) => {
+      await queryClient.invalidateQueries({ queryKey: ["tasks", userId] });
+      if (result.completed) {
+        await queryClient.invalidateQueries({
+          queryKey: ["captures", userId],
+        });
+      }
+    },
   });
 
   const add = useMutation({
@@ -470,7 +497,11 @@ export function TasksPanel({
                     task.status === "done" ? "Mark incomplete" : "Complete"
                   }
                   onClick={() =>
-                    toggle.mutate({ id: task.id, status: task.status })
+                    toggle.mutate({
+                      id: task.id,
+                      status: task.status,
+                      title: task.title,
+                    })
                   }
                   className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${
                     task.status === "done"

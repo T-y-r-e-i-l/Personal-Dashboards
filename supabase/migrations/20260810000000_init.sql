@@ -99,15 +99,19 @@ create table if not exists public.mood_logs (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users (id) on delete cascade,
   log_date date not null,
+  logged_at timestamptz not null default now(),
   mood integer not null check (mood between 1 and 10),
   energy integer check (energy between 1 and 10),
   stress integer check (stress between 1 and 10),
   note text,
-  created_at timestamptz not null default now(),
-  unique (user_id, log_date)
+  created_at timestamptz not null default now()
 );
 
 create index if not exists mood_logs_user_id_idx on public.mood_logs (user_id);
+create index if not exists mood_logs_user_log_date_idx
+  on public.mood_logs (user_id, log_date);
+create index if not exists mood_logs_user_logged_at_idx
+  on public.mood_logs (user_id, logged_at);
 
 -- Daily priorities
 create table if not exists public.daily_priorities (

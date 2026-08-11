@@ -58,7 +58,7 @@ function renderPanel(
     case "habits":
       return <HabitsPanel {...common} config={config} />;
     case "mood":
-      return <MoodPanel {...common} />;
+      return <MoodPanel {...common} config={config} />;
     case "priorities":
       return <PrioritiesPanel {...common} />;
     case "water":

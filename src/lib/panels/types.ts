@@ -20,8 +20,8 @@ export const PANEL_META: Record<
   },
   mood: {
     label: "Mood",
-    defaultW: 3,
-    defaultH: 3,
+    defaultW: 4,
+    defaultH: 4,
     description: "Mood and energy trends",
   },
   priorities: {

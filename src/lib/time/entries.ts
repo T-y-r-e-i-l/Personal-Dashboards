@@ -1,4 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import {
+  formatTimeTrackedActivity,
+  logActivity,
+} from "@/lib/activity/logActivity";
 import type { TimeEntry } from "@/lib/database.types";
 
 export const TIME_ENTRIES_KEY = "time-entries";
@@ -59,7 +63,25 @@ export async function stopRunningEntry(
     .maybeSingle();
 
   if (error) throw error;
-  return (data as TimeEntryRow | null) ?? null;
+  const entry = (data as TimeEntryRow | null) ?? null;
+  if (entry?.started_at) {
+    try {
+      await logActivity(supabase, {
+        userId,
+        kind: "time",
+        at: endedAt,
+        content: formatTimeTrackedActivity({
+          description: entry.description ?? "",
+          taskTitle: entry.tasks?.title,
+          startedAt: entry.started_at,
+          endedAt,
+        }),
+      });
+    } catch {
+      // Timer stop should succeed even if the activity feed write fails.
+    }
+  }
+  return entry;
 }
 
 export async function startTimer(

@@ -29,7 +29,7 @@ export function QuickCapture({ userId }: { userId: string }) {
         .select("*")
         .eq("user_id", userId)
         .order("updated_at", { ascending: false })
-        .limit(8);
+        .limit(20);
 
       if (!primary.error) {
         return (primary.data ?? []).map((row) => ({
@@ -44,7 +44,7 @@ export function QuickCapture({ userId }: { userId: string }) {
         .select("*")
         .eq("user_id", userId)
         .order("created_at", { ascending: false })
-        .limit(8);
+        .limit(20);
       if (fallback.error) throw fallback.error;
       return (fallback.data ?? []).map((row) => ({
         ...row,

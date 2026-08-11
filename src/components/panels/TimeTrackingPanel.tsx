@@ -95,6 +95,7 @@ export function TimeTrackingPanel({
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: [TIME_RUNNING_KEY, userId] }),
       queryClient.invalidateQueries({ queryKey: [TIME_ENTRIES_KEY, userId] }),
+      queryClient.invalidateQueries({ queryKey: ["captures", userId] }),
     ]);
   }
 

@@ -210,6 +210,7 @@ export type Database = {
           id: string;
           user_id: string;
           log_date: string;
+          logged_at: string;
           mood: number;
           energy: number | null;
           stress: number | null;
@@ -220,6 +221,7 @@ export type Database = {
           id?: string;
           user_id: string;
           log_date: string;
+          logged_at?: string;
           mood: number;
           energy?: number | null;
           stress?: number | null;
