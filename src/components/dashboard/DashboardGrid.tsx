@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
-import GridLayout, {
+import {
+  Responsive,
   useContainerWidth,
   verticalCompactor,
   type Layout,
@@ -22,6 +23,10 @@ import { WaterPanel } from "@/components/panels/WaterPanel";
 import { WeatherPanel } from "@/components/panels/WeatherPanel";
 import { CalendarPanel } from "@/components/panels/CalendarPanel";
 import { TimeTrackingPanel } from "@/components/panels/TimeTrackingPanel";
+
+const BREAKPOINTS = { lg: 768, xs: 0 } as const;
+const COLS = { lg: 12, xs: 1 } as const;
+const MOBILE_BREAKPOINT = BREAKPOINTS.lg;
 
 function renderPanel(
   type: PanelType,
@@ -75,8 +80,9 @@ export function DashboardGrid({
     measureBeforeMount: true,
   });
   const [configPanelId, setConfigPanelId] = useState<string | null>(null);
+  const isMobile = width < MOBILE_BREAKPOINT;
 
-  const layout: Layout = useMemo(
+  const lgLayout: Layout = useMemo(
     () =>
       panels.map((p) => ({
         i: p.id,
@@ -84,17 +90,21 @@ export function DashboardGrid({
         y: p.y,
         w: Math.min(12, Math.max(2, p.w)),
         h: Math.max(2, p.h),
-        minW: 2,
+        minW: 1,
         minH: 2,
       })),
     [panels],
   );
 
+  const layouts = useMemo(() => ({ lg: lgLayout }), [lgLayout]);
+
   const handleLayoutChange = useCallback(
-    (next: Layout) => {
-      onLayoutChange(next);
+    (_current: Layout, allLayouts: { lg?: Layout; xs?: Layout }) => {
+      // Never persist the stacked mobile layout back to the database.
+      if (width < MOBILE_BREAKPOINT) return;
+      if (allLayouts.lg) onLayoutChange(allLayouts.lg);
     },
-    [onLayoutChange],
+    [onLayoutChange, width],
   );
 
   const configuring = panels.find((p) => p.id === configPanelId);
@@ -113,22 +123,24 @@ export function DashboardGrid({
   return (
     <div ref={containerRef} className="dashboard-grid w-full">
       {mounted && width > 0 ? (
-        <GridLayout
+        <Responsive
           className="layout"
           width={width}
-          layout={layout}
-          gridConfig={{
-            cols: 12,
-            rowHeight: 80,
-            margin: [16, 16],
-            containerPadding: [0, 0],
-          }}
+          breakpoints={BREAKPOINTS}
+          cols={COLS}
+          layouts={layouts}
+          rowHeight={80}
+          margin={[16, 16]}
+          containerPadding={[0, 0]}
           dragConfig={{
-            enabled: true,
+            enabled: !isMobile,
             handle: ".panel-drag-handle",
             cancel: "button, input, textarea, select, a",
           }}
-          resizeConfig={{ enabled: true, handles: ["se"] }}
+          resizeConfig={{
+            enabled: !isMobile,
+            handles: ["se"],
+          }}
           compactor={verticalCompactor}
           onLayoutChange={handleLayoutChange}
         >
@@ -137,7 +149,13 @@ export function DashboardGrid({
             const config = (panel.config ?? {}) as PanelConfig;
             return (
               <div key={panel.id} className="dashboard-grid-item">
-                <div className="panel-drag-handle h-full w-full cursor-grab active:cursor-grabbing">
+                <div
+                  className={`panel-drag-handle h-full w-full ${
+                    isMobile
+                      ? "cursor-default"
+                      : "cursor-grab active:cursor-grabbing"
+                  }`}
+                >
                   <div className="h-full w-full animate-panel-fade">
                     <PanelChrome
                       panelType={type}
@@ -153,7 +171,7 @@ export function DashboardGrid({
               </div>
             );
           })}
-        </GridLayout>
+        </Responsive>
       ) : (
         <div className="h-40" />
       )}
