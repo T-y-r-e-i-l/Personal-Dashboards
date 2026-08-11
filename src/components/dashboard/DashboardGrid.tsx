@@ -55,7 +55,7 @@ function renderPanel(
   };
   switch (type) {
     case "tasks":
-      return <TasksPanel {...common} />;
+      return <TasksPanel {...common} config={config} />;
     case "habits":
       return <HabitsPanel {...common} config={config} />;
     case "mood":

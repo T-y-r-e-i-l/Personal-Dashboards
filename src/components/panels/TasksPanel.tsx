@@ -20,17 +20,20 @@ import {
   startTimer,
   stopRunningEntry,
 } from "@/lib/time/entries";
+import type { PanelConfig } from "@/lib/panels/types";
 
 export function TasksPanel({
   userId,
   date,
   readOnly = false,
   timeZone,
+  config,
 }: {
   userId: string;
   date?: string;
   readOnly?: boolean;
   timeZone?: string;
+  config?: PanelConfig;
 }) {
   const supabase = createClient();
   const queryClient = useQueryClient();
@@ -47,6 +50,7 @@ export function TasksPanel({
   const interactive = !readOnly;
   const historical = Boolean(readOnly && date && timeZone);
   const historicalUnavailable = Boolean(readOnly && date && !timeZone);
+  const showCompleted = config?.showCompleted ?? true;
 
   const tasks = useQuery({
     queryKey: historical
@@ -71,13 +75,28 @@ export function TasksPanel({
         .from("tasks")
         .select("*")
         .eq("user_id", userId)
+        .is("archived_at", null)
         .order("sort_order", { ascending: true })
         .order("created_at", { ascending: true });
       if (!ordered.error) return ordered.data;
 
-      // Fallback before sort_order migration is applied.
+      // Fallback before sort_order / archived_at migrations are applied.
       if (!/column|schema cache/i.test(ordered.error.message)) {
         throw ordered.error;
+      }
+      const withoutArchive = await supabase
+        .from("tasks")
+        .select("*")
+        .eq("user_id", userId)
+        .order("sort_order", { ascending: true })
+        .order("created_at", { ascending: true });
+      if (!withoutArchive.error) {
+        return (withoutArchive.data ?? []).filter(
+          (task) => !(task as { archived_at?: string | null }).archived_at,
+        );
+      }
+      if (!/column|schema cache/i.test(withoutArchive.error.message)) {
+        throw withoutArchive.error;
       }
       const fallback = await supabase
         .from("tasks")
@@ -86,7 +105,9 @@ export function TasksPanel({
         .order("due_date", { ascending: true, nullsFirst: false })
         .order("created_at", { ascending: false });
       if (fallback.error) throw fallback.error;
-      return fallback.data;
+      return (fallback.data ?? []).filter(
+        (task) => !(task as { archived_at?: string | null }).archived_at,
+      );
     },
     enabled: !historicalUnavailable,
   });
@@ -269,6 +290,30 @@ export function TasksPanel({
     onError: (err: Error) => showToast(err.message),
   });
 
+  const archiveTask = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from("tasks")
+        .update({ archived_at: new Date().toISOString() })
+        .eq("id", id)
+        .eq("user_id", userId);
+      if (error) throw error;
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["tasks", userId] });
+      showToast("Task archived");
+    },
+    onError: (err: Error) => {
+      if (/column|schema cache/i.test(err.message)) {
+        showToast(
+          "Run the tasks_archived_at migration in Supabase to enable archiving.",
+        );
+        return;
+      }
+      showToast(err.message);
+    },
+  });
+
   function startEdit(task: {
     id: string;
     title: string;
@@ -322,14 +367,18 @@ export function TasksPanel({
     return <p className="text-sm text-[var(--muted)]">Loading…</p>;
   }
 
-  const items = tasks.data ?? [];
+  const items = (tasks.data ?? []).filter(
+    (task) => historical || showCompleted || task.status !== "done",
+  );
   if (items.length === 0 && !(adding && interactive)) {
     return (
       <EmptyState
         message={
           historical
             ? "No completed tasks for this day."
-            : "No tasks yet. Add your first one."
+            : (tasks.data?.length ?? 0) > 0 && !showCompleted
+              ? "No open tasks. Completed ones are hidden."
+              : "No tasks yet. Add your first one."
         }
         actionLabel={interactive ? "Add task" : undefined}
         onAction={
@@ -583,6 +632,18 @@ export function TasksPanel({
                   }`}
                 >
                   {isRunning ? <StopIcon /> : <PlayIcon />}
+                </button>
+              ) : null}
+              {interactive && task.status === "done" ? (
+                <button
+                  type="button"
+                  aria-label="Archive task"
+                  title="Archive"
+                  disabled={archiveTask.isPending}
+                  onClick={() => archiveTask.mutate(task.id)}
+                  className="mt-0.5 shrink-0 rounded-full px-2 py-1 text-xs font-medium text-[var(--muted)] transition hover:bg-[var(--surface-soft)] hover:text-[var(--ink)] disabled:opacity-50"
+                >
+                  Archive
                 </button>
               ) : null}
             </li>

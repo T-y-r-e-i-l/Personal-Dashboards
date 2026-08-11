@@ -153,6 +153,7 @@ export type Database = {
           priority: "low" | "medium" | "high";
           due_date: string | null;
           sort_order: number;
+          archived_at: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -165,6 +166,7 @@ export type Database = {
           priority?: "low" | "medium" | "high";
           due_date?: string | null;
           sort_order?: number;
+          archived_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };
