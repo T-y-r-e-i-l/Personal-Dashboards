@@ -200,7 +200,7 @@ export function DashboardHome({
 
   return (
     <main className="mx-auto w-full max-w-6xl px-4 py-8 md:px-8">
-      <div className="mb-8 flex flex-col items-start gap-4 md:flex-row md:flex-wrap md:items-end md:justify-between">
+      <div className="mb-8 hidden flex-col items-start gap-4 md:flex md:flex-row md:flex-wrap md:items-end md:justify-between">
         <div className="min-w-0 md:flex-1">
           <p className="text-sm text-[var(--muted)]">Today</p>
           <h1 className="font-[family-name:var(--font-display)] text-4xl tracking-tight md:text-5xl">

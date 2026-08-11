@@ -67,6 +67,7 @@ export function QuickCapture({ userId }: { userId: string }) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [range, setRange] = useState<NotesRange>("today");
   const [search, setSearch] = useState("");
+  const [searchOpen, setSearchOpen] = useState(false);
   const deferredSearch = useDeferredValue(search.trim());
   const fileInputRef = useRef<HTMLInputElement>(null);
   const showToast = useToast((s) => s.show);
@@ -175,8 +176,6 @@ export function QuickCapture({ userId }: { userId: string }) {
     mutationFn: async ({ id, text }: { id: string; text: string }) => {
       const now = new Date().toISOString();
       const attempts = [
-        { content: text, visibility: "private" as const, updated_at: now },
-        { content: text, visibility: "private" as const },
         { content: text, updated_at: now },
         { content: text },
       ] as const;
@@ -197,6 +196,56 @@ export function QuickCapture({ userId }: { userId: string }) {
     onSuccess: async () => {
       setEditingId(null);
       showToast("Note updated");
+      await queryClient.invalidateQueries({ queryKey: ["captures", userId] });
+    },
+    onError: (err: Error) => showToast(err.message),
+  });
+
+  const deleteCapture = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from("captures")
+        .delete()
+        .eq("id", id)
+        .eq("user_id", userId);
+      if (error) throw error;
+    },
+    onSuccess: async () => {
+      if (editingId) setEditingId(null);
+      showToast("Note deleted");
+      await queryClient.invalidateQueries({ queryKey: ["captures", userId] });
+    },
+    onError: (err: Error) => showToast(err.message),
+  });
+
+  const shareCapture = useMutation({
+    mutationFn: async (id: string) => {
+      const attempts = [
+        { visibility: "public" as const, updated_at: new Date().toISOString() },
+        { visibility: "public" as const },
+      ] as const;
+
+      let lastError: Error | null = null;
+      for (const patch of attempts) {
+        const { error } = await supabase
+          .from("captures")
+          .update(patch)
+          .eq("id", id)
+          .eq("user_id", userId);
+        if (!error) return;
+        lastError = error;
+        if (!/column|schema cache/i.test(error.message)) throw error;
+      }
+      throw lastError ?? new Error("Failed to share note");
+    },
+    onSuccess: async (_data, id) => {
+      const url = `${window.location.origin}/n/${id}`;
+      try {
+        await navigator.clipboard.writeText(url);
+        showToast("Share link copied");
+      } catch {
+        showToast(url);
+      }
       await queryClient.invalidateQueries({ queryKey: ["captures", userId] });
     },
     onError: (err: Error) => showToast(err.message),
@@ -291,18 +340,43 @@ export function QuickCapture({ userId }: { userId: string }) {
         </div>
       </form>
 
-      <div className="mt-4 flex flex-col gap-2 font-[family-name:var(--font-body)] text-sm font-normal sm:flex-row sm:items-center">
-        <label className="relative min-w-0 flex-1">
-          <span className="sr-only">Search notes</span>
-          <input
-            type="search"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search notes…"
-            className="w-full rounded-full border border-[var(--border)] bg-[var(--surface)] px-3.5 py-2 text-sm text-[var(--ink)] outline-none placeholder:text-[var(--muted)] focus:border-[var(--ink)]"
-          />
-        </label>
-        <div className="flex shrink-0 items-center gap-2">
+      <div className="mt-4 flex items-center gap-2 font-[family-name:var(--font-body)] text-sm font-normal">
+        {searchOpen || search ? (
+          <label className="relative min-w-0 flex-1">
+            <span className="sr-only">Search notes</span>
+            <input
+              type="search"
+              value={search}
+              autoFocus
+              onChange={(e) => setSearch(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") {
+                  if (search) {
+                    setSearch("");
+                  } else {
+                    setSearchOpen(false);
+                  }
+                }
+              }}
+              onBlur={() => {
+                if (!search.trim()) setSearchOpen(false);
+              }}
+              placeholder="Search notes…"
+              className="w-full rounded-full border border-[var(--border)] bg-[var(--surface)] px-3.5 py-2 text-sm text-[var(--ink)] outline-none placeholder:text-[var(--muted)] focus:border-[var(--ink)]"
+            />
+          </label>
+        ) : (
+          <button
+            type="button"
+            aria-label="Search notes"
+            title="Search notes"
+            onClick={() => setSearchOpen(true)}
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--surface)] text-[var(--muted)] transition hover:border-[var(--ink)] hover:text-[var(--ink)]"
+          >
+            <SearchIcon />
+          </button>
+        )}
+        <div className="ml-auto flex shrink-0 items-center gap-2">
           <label className="flex items-center gap-2">
             <span className="sr-only">Notes range</span>
             <select
@@ -323,6 +397,7 @@ export function QuickCapture({ userId }: { userId: string }) {
               onClick={() => {
                 setSearch("");
                 setRange("today");
+                setSearchOpen(false);
               }}
               className="rounded-full px-2.5 py-2 text-xs font-medium text-[var(--muted)] transition hover:text-[var(--ink)]"
             >
@@ -345,6 +420,8 @@ export function QuickCapture({ userId }: { userId: string }) {
               editing={editingId === item.id}
               saving={updateCapture.isPending && editingId === item.id}
               uploading={uploading}
+              sharing={shareCapture.isPending}
+              deleting={deleteCapture.isPending}
               onStartEdit={() => setEditingId(item.id)}
               onCancelEdit={() => setEditingId(null)}
               onSave={(text) =>
@@ -353,6 +430,14 @@ export function QuickCapture({ userId }: { userId: string }) {
                   text,
                 })
               }
+              onDelete={() => {
+                if (
+                  window.confirm("Delete this note? This cannot be undone.")
+                ) {
+                  deleteCapture.mutate(item.id);
+                }
+              }}
+              onShare={() => shareCapture.mutate(item.id)}
               onAddMedia={(files, setText) =>
                 void onFilesSelected(files, setText)
               }
@@ -377,18 +462,26 @@ function CaptureListItem({
   editing,
   saving,
   uploading,
+  sharing,
+  deleting,
   onStartEdit,
   onCancelEdit,
   onSave,
+  onDelete,
+  onShare,
   onAddMedia,
 }: {
   item: Capture;
   editing: boolean;
   saving: boolean;
   uploading: boolean;
+  sharing: boolean;
+  deleting: boolean;
   onStartEdit: () => void;
   onCancelEdit: () => void;
   onSave: (text: string) => void;
+  onDelete: () => void;
+  onShare: () => void;
   onAddMedia: (
     files: FileList | null,
     setText: (updater: (prev: string) => string) => void,
@@ -401,6 +494,7 @@ function CaptureListItem({
     Boolean(item.updated_at) &&
     new Date(item.updated_at).getTime() - new Date(item.created_at).getTime() >
       1000;
+  const shared = item.visibility === "public";
 
   useEffect(() => {
     if (editing) {
@@ -483,7 +577,39 @@ function CaptureListItem({
   }
 
   return (
-    <li className="group flex items-start justify-between gap-4 border-b border-[var(--border)]/70 pb-3 last:border-0 last:pb-0">
+    <li className="group flex flex-col gap-2 border-b border-[var(--border)]/70 pb-3 last:border-0 last:pb-0 md:flex-row md:items-start md:justify-between md:gap-4">
+      <div className="flex shrink-0 items-center justify-between gap-3 font-[family-name:var(--font-body)] text-sm font-normal md:order-2 md:flex-col md:items-end md:gap-2 md:pt-0.5">
+        <time className="text-xs text-[var(--muted)]">
+          {format(new Date(stamp), "MMM d · h:mm a")}
+          {edited ? " · edited" : ""}
+          {shared ? " · shared" : ""}
+        </time>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={onDelete}
+            disabled={deleting}
+            className="text-xs font-medium text-[var(--muted)] transition hover:text-[var(--ink)] disabled:opacity-50"
+          >
+            Delete
+          </button>
+          <button
+            type="button"
+            onClick={onStartEdit}
+            className="text-xs font-medium text-[var(--muted)] transition hover:text-[var(--ink)]"
+          >
+            Edit
+          </button>
+          <button
+            type="button"
+            onClick={onShare}
+            disabled={sharing}
+            className="text-xs font-medium text-[var(--muted)] transition hover:text-[var(--ink)] disabled:opacity-50"
+          >
+            {shared ? "Copy link" : "Share"}
+          </button>
+        </div>
+      </div>
       <div
         role="button"
         tabIndex={0}
@@ -498,25 +624,32 @@ function CaptureListItem({
             onStartEdit();
           }
         }}
-        className="markdown-body min-w-0 flex-1 cursor-pointer rounded-xl text-left text-[var(--ink)] outline-none transition hover:bg-[var(--surface-soft)]/70 focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+        className="markdown-body min-w-0 flex-1 cursor-pointer rounded-xl text-left text-[var(--ink)] outline-none transition hover:bg-[var(--surface-soft)]/70 focus-visible:ring-2 focus-visible:ring-[var(--accent)] md:order-1"
         title="Edit note"
       >
         <MarkdownContent content={item.content} compact />
       </div>
-      <div className="flex shrink-0 flex-col items-end gap-2 pt-0.5 font-[family-name:var(--font-body)] text-sm font-normal">
-        <time className="text-xs text-[var(--muted)]">
-          {format(new Date(stamp), "MMM d · h:mm a")}
-          {edited ? " · edited" : ""}
-        </time>
-        <button
-          type="button"
-          onClick={onStartEdit}
-          className="text-xs font-medium text-[var(--muted)] transition hover:text-[var(--ink)]"
-        >
-          Edit
-        </button>
-      </div>
     </li>
+  );
+}
+
+function SearchIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <circle
+        cx="11"
+        cy="11"
+        r="6.5"
+        stroke="currentColor"
+        strokeWidth="1.7"
+      />
+      <path
+        d="m16.5 16.5 4 4"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+      />
+    </svg>
   );
 }
 
