@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test:unit": "tsx --test src/lib/utils/habits.test.ts src/lib/blog/dayRange.test.ts src/lib/time/entries.test.ts",
+    "test:unit": "tsx --test src/lib/utils/habits.test.ts src/lib/blog/dayRange.test.ts src/lib/blog/parseDayContext.test.ts src/lib/time/entries.test.ts",
     "test:e2e": "playwright test",
     "test": "npm run test:unit && npm run test:e2e"
   },
