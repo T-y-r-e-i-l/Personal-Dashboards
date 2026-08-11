@@ -41,8 +41,8 @@ npm run dev
    - In the app: **Settings → Connect Google Calendar**
 
 6. Optional — Daily LLM blog:
-   - Set `SUPABASE_SERVICE_ROLE_KEY`, `CRON_SECRET`, and `AI_GATEWAY_API_KEY` or `OPENAI_API_KEY`
-   - Optional `BLOG_MODEL` (default `openai/gpt-4.1-mini`)
+   - Set `SUPABASE_SERVICE_ROLE_KEY`, `CRON_SECRET`, and `AI_GATEWAY_API_KEY` ([Vercel AI Gateway](https://vercel.com/docs/ai-gateway))
+   - Optional `BLOG_MODEL` (default `anthropic/claude-sonnet-5`)
    - Deploy on Vercel so the daily cron in `vercel.json` (`0 6 * * *` UTC) can hit `/api/cron/daily-blog` (Hobby allows one cron/day; digests the local calendar day that just ended)
    - Mark notes Public/Private in Quick Capture; publish posts from **Blog** → day page → share `/p/[id]`
 

@@ -20,7 +20,7 @@ const summarySchema = z.object({
     ),
 });
 
-const DEFAULT_MODEL = "openai/gpt-4.1-mini";
+const DEFAULT_MODEL = "anthropic/claude-sonnet-5";
 
 function publicContextSlice(context: DayContext) {
   return {
