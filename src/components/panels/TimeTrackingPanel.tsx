@@ -1,10 +1,11 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useToast } from "@/components/ui/Toast";
+import { getDayRangeForDate } from "@/lib/blog/dayRange";
 import {
   TIME_ENTRIES_KEY,
   TIME_RUNNING_KEY,
@@ -20,10 +21,14 @@ import {
 
 export function TimeTrackingPanel({
   userId,
+  date,
+  readOnly = false,
+  timeZone,
 }: {
   userId: string;
   date?: string;
   readOnly?: boolean;
+  timeZone?: string;
 }) {
   const supabase = createClient();
   const queryClient = useQueryClient();
@@ -32,16 +37,27 @@ export function TimeTrackingPanel({
   const [taskId, setTaskId] = useState("");
   const [now, setNow] = useState(() => Date.now());
 
+  const dayBounds = useMemo(() => {
+    if (date && timeZone) {
+      const { startUtc, endUtc } = getDayRangeForDate(timeZone, date);
+      return { startIso: startUtc, endIso: endUtc };
+    }
+    return todayBoundsLocal();
+  }, [date, timeZone]);
+
+  const interactive = !readOnly;
+
   const running = useQuery({
     queryKey: [TIME_RUNNING_KEY, userId],
     queryFn: () => fetchRunningEntry(supabase, userId),
     refetchInterval: 30_000,
+    enabled: interactive && !date,
   });
 
   const entries = useQuery({
-    queryKey: [TIME_ENTRIES_KEY, userId],
+    queryKey: [TIME_ENTRIES_KEY, userId, date ?? "today"],
     queryFn: async () => {
-      const { startIso, endIso } = todayBoundsLocal();
+      const { startIso, endIso } = dayBounds;
       const { data, error } = await supabase
         .from("time_entries")
         .select("*, tasks(title)")
@@ -66,6 +82,7 @@ export function TimeTrackingPanel({
       if (error) throw error;
       return data ?? [];
     },
+    enabled: interactive,
   });
 
   useEffect(() => {
@@ -121,9 +138,10 @@ export function TimeTrackingPanel({
     start.mutate();
   }
 
-  const active = running.data;
+  const active = interactive && !date ? running.data : null;
   const finished = (entries.data ?? []).filter((row) => row.ended_at);
-  const loading = running.isLoading || entries.isLoading;
+  const loading =
+    (interactive && !date && running.isLoading) || entries.isLoading;
 
   if (loading) {
     return <p className="text-sm text-[var(--muted)]">Loading…</p>;
@@ -132,16 +150,24 @@ export function TimeTrackingPanel({
   if (!active && finished.length === 0) {
     return (
       <div className="space-y-3">
-        <EmptyState message="Start a timer or link one to a to-do." />
-        <StartForm
-          description={description}
-          setDescription={setDescription}
-          taskId={taskId}
-          setTaskId={setTaskId}
-          tasks={openTasks.data ?? []}
-          pending={start.isPending}
-          onSubmit={onStart}
+        <EmptyState
+          message={
+            readOnly
+              ? "No time tracked for this day."
+              : "Start a timer or link one to a to-do."
+          }
         />
+        {interactive ? (
+          <StartForm
+            description={description}
+            setDescription={setDescription}
+            taskId={taskId}
+            setTaskId={setTaskId}
+            tasks={openTasks.data ?? []}
+            pending={start.isPending}
+            onSubmit={onStart}
+          />
+        ) : null}
       </div>
     );
   }
@@ -164,17 +190,19 @@ export function TimeTrackingPanel({
                 {formatDuration(elapsedMs(active.started_at, null, now))}
               </p>
             </div>
-            <button
-              type="button"
-              onClick={() => stop.mutate()}
-              disabled={stop.isPending}
-              className="shrink-0 rounded-full bg-[var(--ink)] px-3 py-1.5 text-xs font-medium text-[var(--canvas)] disabled:opacity-50"
-            >
-              {stop.isPending ? "…" : "Stop"}
-            </button>
+            {interactive ? (
+              <button
+                type="button"
+                onClick={() => stop.mutate()}
+                disabled={stop.isPending}
+                className="shrink-0 rounded-full bg-[var(--ink)] px-3 py-1.5 text-xs font-medium text-[var(--canvas)] disabled:opacity-50"
+              >
+                {stop.isPending ? "…" : "Stop"}
+              </button>
+            ) : null}
           </div>
         </div>
-      ) : (
+      ) : interactive ? (
         <StartForm
           description={description}
           setDescription={setDescription}
@@ -184,9 +212,9 @@ export function TimeTrackingPanel({
           pending={start.isPending}
           onSubmit={onStart}
         />
-      )}
+      ) : null}
 
-      {active ? (
+      {interactive && active ? (
         <StartForm
           description={description}
           setDescription={setDescription}
@@ -224,14 +252,16 @@ export function TimeTrackingPanel({
                     elapsedMs(entry.started_at, entry.ended_at),
                   )}
                 </span>
-                <button
-                  type="button"
-                  onClick={() => remove.mutate(entry.id)}
-                  className="text-xs text-[var(--muted)] hover:text-[var(--danger)]"
-                  aria-label="Delete entry"
-                >
-                  ×
-                </button>
+                {interactive ? (
+                  <button
+                    type="button"
+                    onClick={() => remove.mutate(entry.id)}
+                    className="text-xs text-[var(--muted)] hover:text-[var(--danger)]"
+                    aria-label="Delete entry"
+                  >
+                    ×
+                  </button>
+                ) : null}
               </div>
             </li>
           ))}

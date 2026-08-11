@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useToast } from "@/components/ui/Toast";
+import { getDayRangeForDate } from "@/lib/blog/dayRange";
 import {
   TIME_ENTRIES_KEY,
   TIME_RUNNING_KEY,
@@ -18,10 +19,14 @@ import {
 
 export function TasksPanel({
   userId,
+  date,
+  readOnly = false,
+  timeZone,
 }: {
   userId: string;
   date?: string;
   readOnly?: boolean;
+  timeZone?: string;
 }) {
   const supabase = createClient();
   const queryClient = useQueryClient();
@@ -30,9 +35,27 @@ export function TasksPanel({
   const [adding, setAdding] = useState(false);
   const [now, setNow] = useState(() => Date.now());
 
+  const historical = Boolean(readOnly && date && timeZone);
+
   const tasks = useQuery({
-    queryKey: ["tasks", userId],
+    queryKey: historical
+      ? ["tasks", userId, "completed", date, timeZone]
+      : ["tasks", userId],
     queryFn: async () => {
+      if (historical && date && timeZone) {
+        const { startUtc, endUtc } = getDayRangeForDate(timeZone, date);
+        const { data, error } = await supabase
+          .from("tasks")
+          .select("*")
+          .eq("user_id", userId)
+          .eq("status", "done")
+          .gte("updated_at", startUtc)
+          .lt("updated_at", endUtc)
+          .order("updated_at", { ascending: false });
+        if (error) throw error;
+        return data;
+      }
+
       const { data, error } = await supabase
         .from("tasks")
         .select("*")
@@ -48,6 +71,7 @@ export function TasksPanel({
     queryKey: [TIME_RUNNING_KEY, userId],
     queryFn: () => fetchRunningEntry(supabase, userId),
     refetchInterval: 30_000,
+    enabled: !historical,
   });
 
   useEffect(() => {
@@ -130,12 +154,16 @@ export function TasksPanel({
   }
 
   const items = tasks.data ?? [];
-  if (items.length === 0 && !adding) {
+  if (items.length === 0 && !(adding && !historical)) {
     return (
       <EmptyState
-        message="No tasks yet. Add your first one."
-        actionLabel="Add task"
-        onAction={() => setAdding(true)}
+        message={
+          historical
+            ? "No completed tasks for this day."
+            : "No tasks yet. Add your first one."
+        }
+        actionLabel={historical ? undefined : "Add task"}
+        onAction={historical ? undefined : () => setAdding(true)}
       />
     );
   }
@@ -146,7 +174,7 @@ export function TasksPanel({
     <div className="space-y-3">
       <ul className="space-y-2">
         {items.map((task) => {
-          const isRunning = activeTaskId === task.id;
+          const isRunning = !historical && activeTaskId === task.id;
           return (
             <li
               key={task.id}
@@ -154,22 +182,31 @@ export function TasksPanel({
                 isRunning ? "bg-[var(--surface-soft)]" : ""
               }`}
             >
-              <button
-                type="button"
-                aria-label={
-                  task.status === "done" ? "Mark incomplete" : "Complete"
-                }
-                onClick={() =>
-                  toggle.mutate({ id: task.id, status: task.status })
-                }
-                className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${
-                  task.status === "done"
-                    ? "border-[var(--accent)] bg-[var(--accent)] text-white"
-                    : "border-[var(--border)]"
-                }`}
-              >
-                {task.status === "done" ? "✓" : ""}
-              </button>
+              {historical ? (
+                <span
+                  aria-hidden
+                  className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-[var(--accent)] bg-[var(--accent)] text-white"
+                >
+                  ✓
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  aria-label={
+                    task.status === "done" ? "Mark incomplete" : "Complete"
+                  }
+                  onClick={() =>
+                    toggle.mutate({ id: task.id, status: task.status })
+                  }
+                  className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${
+                    task.status === "done"
+                      ? "border-[var(--accent)] bg-[var(--accent)] text-white"
+                      : "border-[var(--border)]"
+                  }`}
+                >
+                  {task.status === "done" ? "✓" : ""}
+                </button>
+              )}
               <div className="min-w-0 flex-1">
                 <p
                   className={`text-sm ${
@@ -196,7 +233,7 @@ export function TasksPanel({
                   ) : null}
                 </div>
               </div>
-              {task.status !== "done" ? (
+              {!historical && task.status !== "done" ? (
                 <button
                   type="button"
                   aria-label={isRunning ? "Stop timer" : "Start timer"}
@@ -223,7 +260,7 @@ export function TasksPanel({
         })}
       </ul>
 
-      {adding ? (
+      {!historical && adding ? (
         <form
           className="flex gap-2"
           onSubmit={(e) => {
@@ -245,7 +282,7 @@ export function TasksPanel({
             Add
           </button>
         </form>
-      ) : (
+      ) : !historical ? (
         <button
           type="button"
           onClick={() => setAdding(true)}
@@ -253,7 +290,7 @@ export function TasksPanel({
         >
           + Add task
         </button>
-      )}
+      ) : null}
     </div>
   );
 }

@@ -1,10 +1,12 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { endOfDay, format, startOfDay } from "date-fns";
+import { endOfDay, format, parseISO, startOfDay } from "date-fns";
 import { useRouter } from "next/navigation";
+import { useMemo } from "react";
 import Link from "next/link";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { getDayRangeForDate } from "@/lib/blog/dayRange";
 
 type GoogleEvent = {
   id: string;
@@ -16,14 +18,31 @@ type GoogleEvent = {
 
 export function CalendarPanel({
   userId: _userId,
+  date,
+  timeZone,
 }: {
   userId: string;
   date?: string;
   readOnly?: boolean;
+  timeZone?: string;
 }) {
   const router = useRouter();
-  const start = startOfDay(new Date()).toISOString();
-  const end = endOfDay(new Date()).toISOString();
+
+  const { start, end, headerLabel } = useMemo(() => {
+    if (date && timeZone) {
+      const range = getDayRangeForDate(timeZone, date);
+      return {
+        start: range.startUtc,
+        end: range.endUtc,
+        headerLabel: format(parseISO(`${date}T12:00:00`), "EEEE, MMM d"),
+      };
+    }
+    return {
+      start: startOfDay(new Date()).toISOString(),
+      end: endOfDay(new Date()).toISOString(),
+      headerLabel: format(new Date(), "EEEE, MMM d"),
+    };
+  }, [date, timeZone]);
 
   const googleEvents = useQuery({
     queryKey: ["google_calendar_events", start, end],
@@ -83,14 +102,18 @@ export function CalendarPanel({
     return (
       <div className="space-y-2">
         <div className="flex items-center justify-between gap-2">
-          <p className="text-xs text-[var(--muted)]">
-            {format(new Date(), "EEEE, MMM d")}
-          </p>
+          <p className="text-xs text-[var(--muted)]">{headerLabel}</p>
           <p className="truncate text-[10px] font-medium uppercase tracking-wide text-[var(--accent)]">
             Google synced
           </p>
         </div>
-        <EmptyState message="No Google Calendar events today." />
+        <EmptyState
+          message={
+            date
+              ? "No Google Calendar events for this day."
+              : "No Google Calendar events today."
+          }
+        />
       </div>
     );
   }
@@ -98,9 +121,7 @@ export function CalendarPanel({
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-xs text-[var(--muted)]">
-          {format(new Date(), "EEEE, MMM d")}
-        </p>
+        <p className="text-xs text-[var(--muted)]">{headerLabel}</p>
         <p className="truncate text-[10px] font-medium uppercase tracking-wide text-[var(--accent)]">
           Google synced
         </p>

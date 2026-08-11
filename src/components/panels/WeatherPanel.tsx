@@ -19,6 +19,9 @@ type WeatherResponse = {
 export function WeatherPanel({
   userId,
   location,
+  date,
+  readOnly = false,
+  weatherSnapshot,
 }: {
   userId?: string;
   location?: string | null;
@@ -38,6 +41,8 @@ export function WeatherPanel({
   );
   const [geoLoading, setGeoLoading] = useState(false);
 
+  const historical = Boolean(readOnly && date);
+
   useEffect(() => {
     const next = location?.trim() || "";
     setSavedLocation(next);
@@ -48,7 +53,7 @@ export function WeatherPanel({
 
   const query = useQuery({
     queryKey: ["weather", activeLocation, coords?.lat, coords?.lon],
-    enabled: Boolean(activeLocation || coords),
+    enabled: !historical && Boolean(activeLocation || coords),
     queryFn: async () => {
       const params = new URLSearchParams();
       if (coords) {
@@ -119,6 +124,27 @@ export function WeatherPanel({
         showToast("Could not get device location. Enter a city instead.");
       },
       { enableHighAccuracy: false, timeout: 10000 },
+    );
+  }
+
+  if (historical) {
+    if (!weatherSnapshot) {
+      return (
+        <EmptyState message="Weather unavailable for this day." />
+      );
+    }
+    return (
+      <div className="flex h-full flex-col justify-between">
+        <div>
+          <p className="text-xs text-[var(--muted)]">{weatherSnapshot.location}</p>
+          <p className="mt-1 text-4xl font-semibold tracking-tight">
+            {Math.round(weatherSnapshot.temp)}°
+          </p>
+          <p className="capitalize text-sm text-[var(--muted)]">
+            {weatherSnapshot.description}
+          </p>
+        </div>
+      </div>
     );
   }
 

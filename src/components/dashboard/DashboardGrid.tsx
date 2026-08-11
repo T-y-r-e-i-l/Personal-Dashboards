@@ -42,6 +42,7 @@ function renderPanel(
   options: {
     date?: string;
     readOnly?: boolean;
+    timeZone?: string;
     weatherSnapshot?: WeatherSnapshot | null;
   },
 ) {
@@ -49,6 +50,7 @@ function renderPanel(
     userId,
     date: options.date,
     readOnly: options.readOnly,
+    timeZone: options.timeZone,
   };
   switch (type) {
     case "tasks":
@@ -87,6 +89,7 @@ export function DashboardGrid({
   onUpdateConfig,
   readOnly = false,
   date,
+  timeZone,
   weatherSnapshot,
 }: {
   userId: string;
@@ -97,6 +100,7 @@ export function DashboardGrid({
   onUpdateConfig: (panelId: string, config: PanelConfig) => void;
   readOnly?: boolean;
   date?: string;
+  timeZone?: string;
   weatherSnapshot?: WeatherSnapshot | null;
 }) {
   const { width, containerRef, mounted } = useContainerWidth({
@@ -107,8 +111,8 @@ export function DashboardGrid({
   const isMobile = mounted && width > 0 && width < MOBILE_BREAKPOINT;
 
   const panelOptions = useMemo(
-    () => ({ date, readOnly, weatherSnapshot }),
-    [date, readOnly, weatherSnapshot],
+    () => ({ date, readOnly, timeZone, weatherSnapshot }),
+    [date, readOnly, timeZone, weatherSnapshot],
   );
 
   const lgLayout: Layout = useMemo(
