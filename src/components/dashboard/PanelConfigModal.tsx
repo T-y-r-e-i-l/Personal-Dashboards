@@ -4,19 +4,28 @@ import { useState } from "react";
 import type { PanelConfig, PanelType } from "@/lib/panels/types";
 import { PANEL_META } from "@/lib/panels/types";
 
+const ALL_PANEL_TYPES = Object.keys(PANEL_META) as PanelType[];
+
 export function PanelConfigModal({
   panelType,
   initial,
   onClose,
   onSave,
+  onSwap,
 }: {
   panelType: PanelType;
   initial: PanelConfig;
   onClose: () => void;
   onSave: (config: PanelConfig) => void;
+  onSwap: (type: PanelType) => void;
 }) {
   const [config, setConfig] = useState<PanelConfig>(initial);
+  const [showSwap, setShowSwap] = useState(false);
+  const [swapType, setSwapType] = useState<PanelType>(
+    () => ALL_PANEL_TYPES.find((type) => type !== panelType) ?? panelType,
+  );
   const meta = PANEL_META[panelType];
+  const swapOptions = ALL_PANEL_TYPES.filter((type) => type !== panelType);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
@@ -89,23 +98,64 @@ export function PanelConfigModal({
               the grid.
             </p>
           )}
+
+          {showSwap ? (
+            <div className="border-t border-[var(--border)] pt-4">
+              <div className="block text-sm">
+                <span className="mb-1.5 block font-medium">Swap with</span>
+                <p className="mb-2 text-xs text-[var(--muted)]">
+                  Replace this panel in place. Size and position stay the same.
+                </p>
+                <select
+                  value={swapType}
+                  onChange={(e) => setSwapType(e.target.value as PanelType)}
+                  className="w-full rounded-xl border border-[var(--border)] px-3 py-2"
+                >
+                  {swapOptions.map((type) => (
+                    <option key={type} value={type}>
+                      {PANEL_META[type].label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          ) : null}
         </div>
 
-        <div className="mt-8 flex justify-end gap-2">
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-full px-4 py-2 text-sm text-[var(--muted)]"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={() => onSave(config)}
-            className="rounded-full bg-[var(--ink)] px-4 py-2 text-sm font-medium text-[var(--canvas)]"
-          >
-            Save
-          </button>
+        <div className="mt-8 flex items-center justify-between gap-2">
+          {!showSwap ? (
+            <button
+              type="button"
+              onClick={() => setShowSwap(true)}
+              className="rounded-full border border-[var(--border)] px-4 py-2 text-sm font-medium text-[var(--ink)] transition hover:bg-[var(--surface-soft)]"
+            >
+              Swap Panel
+            </button>
+          ) : (
+            <span />
+          )}
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-full px-4 py-2 text-sm text-[var(--muted)]"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (showSwap && swapType !== panelType) {
+                  onSwap(swapType);
+                  return;
+                }
+                onSave(config);
+              }}
+              className="rounded-full bg-[var(--ink)] px-4 py-2 text-sm font-medium text-[var(--canvas)]"
+            >
+              Save
+            </button>
+          </div>
         </div>
       </div>
     </div>

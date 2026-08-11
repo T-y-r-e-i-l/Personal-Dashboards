@@ -87,6 +87,7 @@ export function DashboardGrid({
   onLayoutChange,
   onRemovePanel,
   onUpdateConfig,
+  onSwapPanel,
   readOnly = false,
   date,
   timeZone,
@@ -98,6 +99,7 @@ export function DashboardGrid({
   onLayoutChange: (layout: Layout) => void;
   onRemovePanel: (panelId: string) => void;
   onUpdateConfig: (panelId: string, config: PanelConfig) => void;
+  onSwapPanel: (panelId: string, type: PanelType) => void;
   readOnly?: boolean;
   date?: string;
   timeZone?: string;
@@ -185,6 +187,7 @@ export function DashboardGrid({
                 className={collapsed ? undefined : "min-h-[280px]"}
               >
                 <PanelChrome
+                  key={`${panel.id}-${type}`}
                   panelType={type}
                   collapsible
                   collapsed={collapsed}
@@ -197,7 +200,10 @@ export function DashboardGrid({
                   }
                 >
                   {!collapsed ? (
-                    <PanelErrorBoundary title={PANEL_META[type]?.label}>
+                    <PanelErrorBoundary
+                      key={type}
+                      title={PANEL_META[type]?.label}
+                    >
                       {renderPanel(
                         type,
                         userId,
@@ -225,7 +231,7 @@ export function DashboardGrid({
           dragConfig={{
             enabled: !readOnly,
             handle: ".panel-drag-handle",
-            cancel: "button, input, textarea, select, a",
+            cancel: "button, input, textarea, select, a, .task-drag-handle",
           }}
           resizeConfig={{
             enabled: !readOnly,
@@ -248,6 +254,7 @@ export function DashboardGrid({
                 >
                   <div className="h-full w-full animate-panel-fade">
                     <PanelChrome
+                      key={`${panel.id}-${type}`}
                       panelType={type}
                       onConfigure={
                         readOnly
@@ -260,7 +267,10 @@ export function DashboardGrid({
                           : () => onRemovePanel(panel.id)
                       }
                     >
-                      <PanelErrorBoundary title={PANEL_META[type]?.label}>
+                      <PanelErrorBoundary
+                        key={type}
+                        title={PANEL_META[type]?.label}
+                      >
                         {renderPanel(
                           type,
                           userId,
@@ -285,6 +295,10 @@ export function DashboardGrid({
           onClose={() => setConfigPanelId(null)}
           onSave={(config) => {
             onUpdateConfig(configuring.id, config);
+            setConfigPanelId(null);
+          }}
+          onSwap={(type) => {
+            onSwapPanel(configuring.id, type);
             setConfigPanelId(null);
           }}
         />

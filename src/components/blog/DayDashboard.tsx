@@ -70,6 +70,7 @@ export function DayDashboard({
           onLayoutChange={() => {}}
           onRemovePanel={() => {}}
           onUpdateConfig={() => {}}
+          onSwapPanel={() => {}}
         />
       </section>
 

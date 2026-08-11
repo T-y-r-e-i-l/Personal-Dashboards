@@ -154,6 +154,46 @@ export function DashboardHome({
     showToast("Panel updated");
   }
 
+  async function swapPanel(panelId: string, type: PanelType) {
+    const current = panels.find((p) => p.id === panelId);
+    if (!current) {
+      showToast("Panel not found");
+      return;
+    }
+    if (current.panel_type === type) {
+      showToast("Already that panel");
+      return;
+    }
+
+    const previous = current;
+    setPanels((prev) =>
+      prev.map((p) =>
+        p.id === panelId ? { ...p, panel_type: type, config: {} } : p,
+      ),
+    );
+
+    const { data, error } = await supabase
+      .from("dashboard_panels")
+      .update({
+        panel_type: type,
+        config: {},
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", panelId)
+      .select("id, panel_type")
+      .maybeSingle();
+
+    if (error || !data) {
+      setPanels((prev) =>
+        prev.map((p) => (p.id === panelId ? previous : p)),
+      );
+      showToast(error?.message ?? "Could not swap panel");
+      return;
+    }
+
+    showToast(`Swapped to ${PANEL_META[type].label}`);
+  }
+
   const firstName =
     initialProfile?.display_name?.split(" ")[0] ??
     "there";
@@ -201,6 +241,7 @@ export function DashboardHome({
             onLayoutChange={debouncedPersist}
             onRemovePanel={(id) => void removePanel(id)}
             onUpdateConfig={(id, config) => void updateConfig(id, config)}
+            onSwapPanel={(id, type) => void swapPanel(id, type)}
           />
         </div>
 
