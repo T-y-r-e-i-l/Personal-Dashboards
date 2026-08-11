@@ -66,7 +66,7 @@ export function DashboardHeaderMeta({
   });
 
   return (
-    <div className="min-w-[10rem] text-left sm:text-right">
+    <div className="min-w-[10rem] text-left md:text-right">
       <p className="text-sm font-medium text-[var(--ink)]">{dateLabel}</p>
       <p className="mt-0.5 font-mono text-2xl tabular-nums tracking-tight text-[var(--ink)]">
         {timeLabel}

@@ -160,8 +160,8 @@ export function DashboardHome({
 
   return (
     <main className="mx-auto w-full max-w-6xl px-4 py-8 md:px-8">
-      <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
-        <div className="min-w-0 flex-1">
+      <div className="mb-8 flex flex-col items-start gap-4 md:flex-row md:flex-wrap md:items-end md:justify-between">
+        <div className="min-w-0 md:flex-1">
           <p className="text-sm text-[var(--muted)]">Today</p>
           <h1 className="font-[family-name:var(--font-display)] text-4xl tracking-tight md:text-5xl">
             {timeOfDayGreeting()}, {firstName}
@@ -171,7 +171,7 @@ export function DashboardHome({
           </p>
         </div>
 
-        <div className="flex flex-wrap items-end gap-4 sm:justify-end">
+        <div className="flex w-full flex-col items-start gap-3 md:w-auto md:flex-row md:flex-wrap md:items-end md:gap-4 md:justify-end">
           <DashboardHeaderMeta
             location={initialProfile?.location}
             timezone={initialProfile?.timezone}
