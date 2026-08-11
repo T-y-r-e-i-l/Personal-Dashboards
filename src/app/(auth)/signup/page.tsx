@@ -13,6 +13,7 @@ export default function SignupPage() {
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [resending, setResending] = useState(false);
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -44,6 +45,35 @@ export default function SignupPage() {
 
     setInfo("Check your email to verify your account, then log in.");
     setLoading(false);
+  }
+
+  async function resendConfirmation() {
+    if (!email.trim()) {
+      setError("Enter your email above, then resend.");
+      return;
+    }
+
+    setResending(true);
+    setError(null);
+    setInfo(null);
+
+    const supabase = createClient();
+    const { error: resendError } = await supabase.auth.resend({
+      type: "signup",
+      email: email.trim(),
+      options: {
+        emailRedirectTo: `${window.location.origin}/auth/callback?next=/onboarding`,
+      },
+    });
+
+    setResending(false);
+
+    if (resendError) {
+      setError(resendError.message);
+      return;
+    }
+
+    setInfo("Confirmation email resent. Check your inbox and spam folder.");
   }
 
   return (
@@ -110,6 +140,14 @@ export default function SignupPage() {
             className="w-full rounded-full bg-[var(--ink)] py-3 text-sm font-semibold text-[var(--canvas)] disabled:opacity-60"
           >
             {loading ? "Creating…" : "Sign up"}
+          </button>
+          <button
+            type="button"
+            onClick={() => void resendConfirmation()}
+            disabled={resending || !email.trim()}
+            className="w-full rounded-full border border-[var(--border)] bg-[var(--surface)] py-3 text-sm font-medium text-[var(--ink)] transition hover:bg-[var(--surface-soft)] disabled:opacity-60"
+          >
+            {resending ? "Resending…" : "Resend confirmation email"}
           </button>
         </form>
 

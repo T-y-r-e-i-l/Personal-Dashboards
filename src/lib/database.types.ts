@@ -94,7 +94,9 @@ export type Database = {
           content: string;
           tags: string[];
           priority: "low" | "medium" | "high" | null;
+          visibility: "private" | "public";
           created_at: string;
+          updated_at: string;
         };
         Insert: {
           id?: string;
@@ -102,9 +104,40 @@ export type Database = {
           content: string;
           tags?: string[];
           priority?: "low" | "medium" | "high" | null;
+          visibility?: "private" | "public";
           created_at?: string;
+          updated_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["captures"]["Insert"]>;
+      };
+      blog_posts: {
+        Row: {
+          id: string;
+          user_id: string;
+          post_date: string;
+          private_summary: string;
+          public_summary: string;
+          notes_snapshot: Json;
+          day_context: Json;
+          is_public: boolean;
+          model: string | null;
+          generated_at: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          post_date: string;
+          private_summary: string;
+          public_summary: string;
+          notes_snapshot?: Json;
+          day_context?: Json;
+          is_public?: boolean;
+          model?: string | null;
+          generated_at?: string;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["blog_posts"]["Insert"]>;
       };
       tasks: {
         Row: {
@@ -262,6 +295,7 @@ export type Dashboard = Database["public"]["Tables"]["dashboards"]["Row"];
 export type DashboardPanel =
   Database["public"]["Tables"]["dashboard_panels"]["Row"];
 export type Capture = Database["public"]["Tables"]["captures"]["Row"];
+export type BlogPost = Database["public"]["Tables"]["blog_posts"]["Row"];
 export type Task = Database["public"]["Tables"]["tasks"]["Row"];
 export type Habit = Database["public"]["Tables"]["habits"]["Row"];
 export type HabitLog = Database["public"]["Tables"]["habit_logs"]["Row"];

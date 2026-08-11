@@ -1,6 +1,4 @@
 @import "tailwindcss";
-@import "react-grid-layout/css/styles.css";
-@import "react-resizable/css/styles.css";
 
 :root {
   --canvas: #f6f4ef;
@@ -54,14 +52,12 @@ body {
   }
 }
 
-@keyframes panel-settle {
+@keyframes panel-fade {
   from {
     opacity: 0;
-    transform: translateY(12px) scale(0.985);
   }
   to {
     opacity: 1;
-    transform: translateY(0) scale(1);
   }
 }
 
@@ -78,22 +74,65 @@ body {
   animation: fade-up 0.35s ease-out both;
 }
 
-.animate-panel-settle {
-  animation: panel-settle 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+.animate-panel-fade {
+  animation: panel-fade 0.35s ease-out both;
 }
 
 .capture-success {
   animation: capture-pulse 0.6s ease-out;
 }
 
-.react-grid-item.react-grid-placeholder {
+.dashboard-grid .react-grid-layout {
+  position: relative;
+  min-height: 200px;
+}
+
+.dashboard-grid .react-grid-item {
+  position: absolute;
+  box-sizing: border-box;
+  transition: transform 200ms ease, width 200ms ease, height 200ms ease;
+}
+
+.dashboard-grid .react-grid-item.cssTransforms {
+  left: 0;
+  top: 0;
+}
+
+.dashboard-grid .react-grid-item > .dashboard-grid-item,
+.dashboard-grid .react-grid-item.dashboard-grid-item {
+  height: 100%;
+  width: 100%;
+}
+
+.dashboard-grid .react-grid-item .panel-drag-handle {
+  height: 100%;
+  width: 100%;
+}
+
+.dashboard-grid .react-grid-item.react-grid-placeholder {
   background: var(--accent-soft) !important;
   border-radius: var(--radius-panel);
   opacity: 0.55;
 }
 
-.react-grid-item > .react-resizable-handle::after {
-  border-color: var(--muted) !important;
+.dashboard-grid .react-grid-item > .react-resizable-handle {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  bottom: 0;
+  right: 0;
+  cursor: se-resize;
+}
+
+.dashboard-grid .react-grid-item > .react-resizable-handle::after {
+  content: "";
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid var(--muted);
+  border-bottom: 2px solid var(--muted);
 }
 
 .panel-card {
@@ -101,4 +140,121 @@ body {
   border: 1px solid var(--border);
   border-radius: var(--radius-panel);
   box-shadow: var(--shadow-soft);
+  height: 100%;
+}
+
+.markdown-body {
+  color: var(--ink);
+  line-height: 1.55;
+}
+
+.markdown-body > :first-child {
+  margin-top: 0;
+}
+
+.markdown-body > :last-child {
+  margin-bottom: 0;
+}
+
+.markdown-body p,
+.markdown-body ul,
+.markdown-body ol,
+.markdown-body pre,
+.markdown-body blockquote {
+  margin: 0.5rem 0;
+}
+
+.markdown-body h1,
+.markdown-body h2,
+.markdown-body h3 {
+  font-family: var(--font-display), ui-serif, Georgia, serif;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  margin: 0.75rem 0 0.35rem;
+  line-height: 1.25;
+}
+
+.markdown-body h1 {
+  font-size: 1.35rem;
+}
+
+.markdown-body h2 {
+  font-size: 1.15rem;
+}
+
+.markdown-body h3 {
+  font-size: 1.05rem;
+}
+
+.markdown-body ul,
+.markdown-body ol {
+  padding-left: 1.25rem;
+}
+
+.markdown-body ul {
+  list-style: disc;
+}
+
+.markdown-body ol {
+  list-style: decimal;
+}
+
+.markdown-body code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.9em;
+  background: var(--surface-soft);
+  border-radius: 6px;
+  padding: 0.1em 0.35em;
+}
+
+.markdown-body pre {
+  overflow-x: auto;
+  border-radius: 12px;
+  background: var(--surface-soft);
+  padding: 0.75rem 1rem;
+}
+
+.markdown-body pre code {
+  background: transparent;
+  padding: 0;
+}
+
+.markdown-body a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.markdown-body blockquote {
+  border-left: 3px solid var(--border);
+  padding-left: 0.75rem;
+  color: var(--muted);
+}
+
+.markdown-compact {
+  max-height: 180px;
+  overflow: auto;
+}
+
+.markdown-compact .md-block {
+  margin: 0.25rem 0;
+}
+
+.markdown-compact p,
+.markdown-compact ul,
+.markdown-compact ol {
+  margin: 0.15rem 0;
+}
+
+.markdown-compact h1,
+.markdown-compact h2,
+.markdown-compact h3 {
+  font-size: 0.95rem;
+  margin: 0.2rem 0;
+}
+
+.markdown-compact img,
+.markdown-compact video {
+  display: block;
+  max-height: 140px;
 }

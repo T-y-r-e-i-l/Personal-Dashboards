@@ -201,10 +201,6 @@ export function DashboardHome({
         </div>
       </div>
 
-      <div className="mb-10">
-        <QuickCapture userId={userId} />
-      </div>
-
       <DashboardGrid
         userId={userId}
         location={initialProfile?.location ?? null}
@@ -213,6 +209,10 @@ export function DashboardHome({
         onRemovePanel={(id) => void removePanel(id)}
         onUpdateConfig={(id, config) => void updateConfig(id, config)}
       />
+
+      <div className="mt-10">
+        <QuickCapture userId={userId} />
+      </div>
     </main>
   );
 }

@@ -16,7 +16,7 @@ export function PanelChrome({
   const meta = PANEL_META[panelType];
 
   return (
-    <div className="panel-card group flex h-full flex-col overflow-hidden animate-panel-settle">
+    <div className="panel-card group flex h-full flex-col overflow-hidden">
       <div className="flex items-center justify-between px-4 pt-4">
         <h3 className="text-sm font-semibold tracking-tight">{meta.label}</h3>
         <div className="flex items-center gap-1 opacity-0 transition group-hover:opacity-100">

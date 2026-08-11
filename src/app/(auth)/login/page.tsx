@@ -10,12 +10,15 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [resending, setResending] = useState(false);
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     setLoading(true);
     setError(null);
+    setInfo(null);
 
     const supabase = createClient();
     const { error: signInError } = await supabase.auth.signInWithPassword({
@@ -31,6 +34,35 @@ export default function LoginPage() {
 
     router.push("/dashboard");
     router.refresh();
+  }
+
+  async function resendConfirmation() {
+    if (!email.trim()) {
+      setError("Enter your email above, then resend.");
+      return;
+    }
+
+    setResending(true);
+    setError(null);
+    setInfo(null);
+
+    const supabase = createClient();
+    const { error: resendError } = await supabase.auth.resend({
+      type: "signup",
+      email: email.trim(),
+      options: {
+        emailRedirectTo: `${window.location.origin}/auth/callback?next=/onboarding`,
+      },
+    });
+
+    setResending(false);
+
+    if (resendError) {
+      setError(resendError.message);
+      return;
+    }
+
+    setInfo("Confirmation email resent. Check your inbox and spam folder.");
   }
 
   return (
@@ -76,12 +108,25 @@ export default function LoginPage() {
               {error}
             </p>
           ) : null}
+          {info ? (
+            <p className="text-sm text-[var(--accent)]" role="status">
+              {info}
+            </p>
+          ) : null}
           <button
             type="submit"
             disabled={loading}
             className="w-full rounded-full bg-[var(--ink)] py-3 text-sm font-semibold text-[var(--canvas)] disabled:opacity-60"
           >
             {loading ? "Signing in…" : "Log in"}
+          </button>
+          <button
+            type="button"
+            onClick={() => void resendConfirmation()}
+            disabled={resending || !email.trim()}
+            className="w-full rounded-full border border-[var(--border)] bg-[var(--surface)] py-3 text-sm font-medium text-[var(--ink)] transition hover:bg-[var(--surface-soft)] disabled:opacity-60"
+          >
+            {resending ? "Resending…" : "Resend confirmation email"}
           </button>
         </form>
 

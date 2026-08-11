@@ -1,0 +1,218 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { getDayRange } from "@/lib/blog/dayRange";
+import { fetchWeatherSnapshot } from "@/lib/blog/weatherSnapshot";
+import type { DayContext, NoteSnapshot } from "@/lib/blog/types";
+import { listGoogleEvents } from "@/lib/google/calendar";
+import { getValidGoogleAccessToken } from "@/lib/google/connection";
+
+export async function collectDayContext(
+  supabase: SupabaseClient,
+  userId: string,
+  timezone: string,
+  location: string | null,
+  now = new Date(),
+): Promise<{ range: ReturnType<typeof getDayRange>; context: DayContext }> {
+  const range = getDayRange(timezone, now);
+
+  const [
+    capturesRes,
+    tasksRes,
+    prioritiesRes,
+    moodRes,
+    localEventsRes,
+    habitsRes,
+    habitLogsRes,
+    waterRes,
+    weather,
+  ] = await Promise.all([
+    supabase
+      .from("captures")
+      .select("id, content, visibility, created_at")
+      .eq("user_id", userId)
+      .gte("created_at", range.startUtc)
+      .lt("created_at", range.endUtc)
+      .order("created_at", { ascending: true }),
+    supabase
+      .from("tasks")
+      .select("title, priority, updated_at, status")
+      .eq("user_id", userId)
+      .eq("status", "done")
+      .gte("updated_at", range.startUtc)
+      .lt("updated_at", range.endUtc),
+    supabase
+      .from("daily_priorities")
+      .select("title, tier, done")
+      .eq("user_id", userId)
+      .eq("priority_date", range.postDate),
+    supabase
+      .from("mood_logs")
+      .select("mood, energy, stress, note")
+      .eq("user_id", userId)
+      .eq("log_date", range.postDate)
+      .maybeSingle(),
+    supabase
+      .from("calendar_events")
+      .select("title, starts_at, ends_at")
+      .eq("user_id", userId)
+      .gte("starts_at", range.startUtc)
+      .lt("starts_at", range.endUtc)
+      .order("starts_at", { ascending: true }),
+    supabase
+      .from("habits")
+      .select("id, name")
+      .eq("user_id", userId)
+      .eq("active", true),
+    supabase
+      .from("habit_logs")
+      .select("habit_id, completed")
+      .eq("user_id", userId)
+      .eq("log_date", range.postDate),
+    supabase
+      .from("water_logs")
+      .select("glasses, goal")
+      .eq("user_id", userId)
+      .eq("log_date", range.postDate)
+      .maybeSingle(),
+    fetchWeatherSnapshot(location),
+  ]);
+
+  if (capturesRes.error) throw capturesRes.error;
+  if (tasksRes.error) throw tasksRes.error;
+  if (prioritiesRes.error) throw prioritiesRes.error;
+  if (moodRes.error) throw moodRes.error;
+  if (localEventsRes.error) throw localEventsRes.error;
+  if (habitsRes.error) throw habitsRes.error;
+  if (habitLogsRes.error) throw habitLogsRes.error;
+  if (waterRes.error) throw waterRes.error;
+
+  type CaptureRow = {
+    id: string;
+    content: string;
+    visibility?: string | null;
+    created_at: string;
+  };
+  type TaskRow = { title: string; priority: string; updated_at: string };
+  type PriorityRow = { title: string; tier: string; done: boolean };
+  type MoodRow = {
+    mood: number;
+    energy: number | null;
+    stress: number | null;
+    note: string | null;
+  };
+  type EventRow = {
+    title: string;
+    starts_at: string;
+    ends_at: string | null;
+  };
+  type HabitRow = { id: string; name: string };
+  type HabitLogRow = { habit_id: string; completed: boolean };
+  type WaterRow = { glasses: number; goal: number };
+
+  const captures = (capturesRes.data ?? []) as CaptureRow[];
+  const tasks = (tasksRes.data ?? []) as TaskRow[];
+  const priorities = (prioritiesRes.data ?? []) as PriorityRow[];
+  const mood = (moodRes.data ?? null) as MoodRow | null;
+  const localEvents = (localEventsRes.data ?? []) as EventRow[];
+  const habits = (habitsRes.data ?? []) as HabitRow[];
+  const habitLogs = (habitLogsRes.data ?? []) as HabitLogRow[];
+  const water = (waterRes.data ?? null) as WaterRow | null;
+
+  const notes: NoteSnapshot[] = captures.map((row) => ({
+    id: row.id,
+    content: row.content,
+    visibility: row.visibility === "public" ? "public" : "private",
+    created_at: row.created_at,
+  }));
+
+  const habitLogById = new Map(
+    habitLogs.map((log) => [log.habit_id, log.completed]),
+  );
+
+  const calendar: DayContext["calendar"] = localEvents.map((event) => ({
+    title: event.title,
+    starts_at: event.starts_at,
+    ends_at: event.ends_at,
+    source: "local" as const,
+  }));
+
+  try {
+    let token = await getValidGoogleAccessToken(supabase, userId);
+    if (token) {
+      try {
+        const googleEvents = await listGoogleEvents(
+          token.accessToken,
+          range.startUtc,
+          range.endUtc,
+        );
+        for (const event of googleEvents) {
+          calendar.push({
+            title: event.title,
+            starts_at: event.starts_at,
+            ends_at: event.ends_at,
+            source: "google",
+          });
+        }
+      } catch {
+        token = await getValidGoogleAccessToken(supabase, userId, {
+          forceRefresh: true,
+        });
+        if (token) {
+          const googleEvents = await listGoogleEvents(
+            token.accessToken,
+            range.startUtc,
+            range.endUtc,
+          );
+          for (const event of googleEvents) {
+            calendar.push({
+              title: event.title,
+              starts_at: event.starts_at,
+              ends_at: event.ends_at,
+              source: "google",
+            });
+          }
+        }
+      }
+    }
+  } catch {
+    // Google optional for digests
+  }
+
+  calendar.sort(
+    (a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime(),
+  );
+
+  const context: DayContext = {
+    post_date: range.postDate,
+    timezone,
+    location,
+    notes,
+    completed_tasks: tasks.map((task) => ({
+      title: task.title,
+      priority: task.priority,
+      updated_at: task.updated_at,
+    })),
+    priorities: priorities.map((p) => ({
+      title: p.title,
+      tier: p.tier,
+      done: p.done,
+    })),
+    mood: mood
+      ? {
+          mood: mood.mood,
+          energy: mood.energy,
+          stress: mood.stress,
+          note: mood.note,
+        }
+      : null,
+    weather,
+    calendar,
+    habits: habits.map((habit) => ({
+      name: habit.name,
+      completed: Boolean(habitLogById.get(habit.id)),
+    })),
+    water: water ? { glasses: water.glasses, goal: water.goal } : null,
+    time_tracking: [],
+  };
+
+  return { range, context };
+}

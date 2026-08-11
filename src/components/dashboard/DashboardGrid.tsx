@@ -5,8 +5,9 @@ import GridLayout, {
   useContainerWidth,
   verticalCompactor,
   type Layout,
-  type LayoutItem,
 } from "react-grid-layout";
+import "react-grid-layout/css/styles.css";
+import "react-resizable/css/styles.css";
 import type { DashboardPanel } from "@/lib/database.types";
 import type { PanelConfig, PanelType } from "@/lib/panels/types";
 import { PANEL_META } from "@/lib/panels/types";
@@ -39,7 +40,12 @@ function renderPanel(
     case "water":
       return <WaterPanel userId={userId} />;
     case "weather":
-      return <WeatherPanel location={config.location || location} />;
+      return (
+        <WeatherPanel
+          userId={userId}
+          location={config.location || location}
+        />
+      );
     case "calendar":
       return <CalendarPanel userId={userId} />;
     default:
@@ -62,7 +68,9 @@ export function DashboardGrid({
   onRemovePanel: (panelId: string) => void;
   onUpdateConfig: (panelId: string, config: PanelConfig) => void;
 }) {
-  const { width, containerRef, mounted } = useContainerWidth();
+  const { width, containerRef, mounted } = useContainerWidth({
+    measureBeforeMount: true,
+  });
   const [configPanelId, setConfigPanelId] = useState<string | null>(null);
 
   const layout: Layout = useMemo(
@@ -71,8 +79,8 @@ export function DashboardGrid({
         i: p.id,
         x: p.x,
         y: p.y,
-        w: p.w,
-        h: p.h,
+        w: Math.min(12, Math.max(2, p.w)),
+        h: Math.max(2, p.h),
         minW: 2,
         minH: 2,
       })),
@@ -100,41 +108,44 @@ export function DashboardGrid({
   }
 
   return (
-    <div ref={containerRef} className="w-full">
+    <div ref={containerRef} className="dashboard-grid w-full">
       {mounted && width > 0 ? (
         <GridLayout
+          className="layout"
           width={width}
           layout={layout}
           gridConfig={{
-            cols: width < 768 ? 4 : width < 1200 ? 8 : 12,
-            rowHeight: 72,
+            cols: 12,
+            rowHeight: 80,
             margin: [16, 16],
             containerPadding: [0, 0],
           }}
-          dragConfig={{ enabled: true, handle: ".panel-drag-handle" }}
+          dragConfig={{
+            enabled: true,
+            handle: ".panel-drag-handle",
+            cancel: "button, input, textarea, select, a",
+          }}
           resizeConfig={{ enabled: true, handles: ["se"] }}
           compactor={verticalCompactor}
           onLayoutChange={handleLayoutChange}
         >
-          {panels.map((panel, index) => {
+          {panels.map((panel) => {
             const type = panel.panel_type as PanelType;
             const config = (panel.config ?? {}) as PanelConfig;
             return (
-              <div
-                key={panel.id}
-                className="animate-panel-settle"
-                style={{ animationDelay: `${index * 40}ms` }}
-              >
-                <div className="panel-drag-handle h-full cursor-grab active:cursor-grabbing">
-                  <PanelChrome
-                    panelType={type}
-                    onConfigure={() => setConfigPanelId(panel.id)}
-                    onRemove={() => onRemovePanel(panel.id)}
-                  >
-                    <PanelErrorBoundary title={PANEL_META[type]?.label}>
-                      {renderPanel(type, userId, location, config)}
-                    </PanelErrorBoundary>
-                  </PanelChrome>
+              <div key={panel.id} className="dashboard-grid-item">
+                <div className="panel-drag-handle h-full w-full cursor-grab active:cursor-grabbing">
+                  <div className="h-full w-full animate-panel-fade">
+                    <PanelChrome
+                      panelType={type}
+                      onConfigure={() => setConfigPanelId(panel.id)}
+                      onRemove={() => onRemovePanel(panel.id)}
+                    >
+                      <PanelErrorBoundary title={PANEL_META[type]?.label}>
+                        {renderPanel(type, userId, location, config)}
+                      </PanelErrorBoundary>
+                    </PanelChrome>
+                  </div>
                 </div>
               </div>
             );

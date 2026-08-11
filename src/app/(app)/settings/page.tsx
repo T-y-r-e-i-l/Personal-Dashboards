@@ -1,8 +1,9 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, Suspense, useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useToast } from "@/components/ui/Toast";
+import { GoogleCalendarConnect } from "@/components/settings/GoogleCalendarConnect";
 
 export default function SettingsPage() {
   const showToast = useToast((s) => s.show);
@@ -64,15 +65,22 @@ export default function SettingsPage() {
   }
 
   return (
-    <main className="mx-auto w-full max-w-xl px-6 py-10">
-      <h1 className="font-[family-name:var(--font-display)] text-3xl">
-        Settings
-      </h1>
-      <p className="mt-2 text-sm text-[var(--muted)]">
-        Profile details used across your dashboard.
-      </p>
+    <main className="mx-auto w-full max-w-xl space-y-10 px-6 py-10">
+      <div>
+        <h1 className="font-[family-name:var(--font-display)] text-3xl">
+          Settings
+        </h1>
+        <p className="mt-2 text-sm text-[var(--muted)]">
+          Profile details and integrations for your dashboard.
+        </p>
+      </div>
 
-      <form onSubmit={onSave} className="mt-8 space-y-4">
+      <Suspense fallback={<p className="text-sm text-[var(--muted)]">Loading…</p>}>
+        <GoogleCalendarConnect />
+      </Suspense>
+
+      <form onSubmit={onSave} className="space-y-4">
+        <h2 className="text-lg font-semibold tracking-tight">Profile</h2>
         <label className="block">
           <span className="mb-1.5 block text-sm font-medium">Display name</span>
           <input
