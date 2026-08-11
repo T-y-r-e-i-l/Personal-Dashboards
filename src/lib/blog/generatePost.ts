@@ -20,7 +20,7 @@ const summarySchema = z.object({
     ),
 });
 
-const DEFAULT_MODEL = "anthropic/claude-sonnet-5";
+const DEFAULT_MODEL = "poolside/laguna-s-2.1-free";
 
 function publicContextSlice(context: DayContext) {
   return {
@@ -53,31 +53,46 @@ function privateContextSlice(context: DayContext) {
   };
 }
 
+function parseSummaryJson(text: string) {
+  const trimmed = text.trim();
+  const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  const candidate = (fenced?.[1] ?? trimmed).trim();
+  const parsed = summarySchema.safeParse(JSON.parse(candidate));
+  if (!parsed.success) {
+    throw new Error("Model returned invalid summary JSON");
+  }
+  return parsed.data;
+}
+
 async function writeSummaries(context: DayContext) {
   const model = process.env.BLOG_MODEL ?? DEFAULT_MODEL;
+  const prompt = [
+    "You write a personal end-of-day blog entry from structured life-dashboard data.",
+    "Respond with ONLY valid JSON (no markdown fences) matching:",
+    '{"private_summary":"...","public_summary":"..."}',
+    "private_summary — for the owner only; weave notes, completed todos, priorities, mood, weather, calendar, habits/water, and time tracking sessions (minutes). Do not invent facts. Warm, specific, 2–5 short markdown paragraphs.",
+    "public_summary — for strangers; ONLY public notes + weather. Never mention private notes, mood scores, calendar event titles, tasks, or priorities. If little public content, write 1–2 gentle sentences without inventing details.",
+    "",
+    "FULL (private) CONTEXT JSON:",
+    JSON.stringify(privateContextSlice(context)),
+    "",
+    "PUBLIC-SAFE CONTEXT JSON:",
+    JSON.stringify(publicContextSlice(context)),
+  ].join("\n");
 
-  const { output } = await generateText({
-    model,
-    output: Output.object({ schema: summarySchema }),
-    prompt: [
-      "You write a personal end-of-day blog entry from structured life-dashboard data.",
-      "Return two markdown summaries:",
-      "1) private_summary — for the owner only; weave notes, completed todos, priorities, mood, weather, calendar, habits/water, and time tracking sessions (minutes). Do not invent facts.",
-      "2) public_summary — for strangers; ONLY public notes + weather. Never mention private notes, mood scores, calendar event titles, tasks, or priorities.",
-      "",
-      "FULL (private) CONTEXT JSON:",
-      JSON.stringify(privateContextSlice(context)),
-      "",
-      "PUBLIC-SAFE CONTEXT JSON:",
-      JSON.stringify(publicContextSlice(context)),
-    ].join("\n"),
-  });
-
-  if (!output) {
-    throw new Error("Model returned no structured summary");
+  try {
+    const { output } = await generateText({
+      model,
+      output: Output.object({ schema: summarySchema }),
+      prompt,
+    });
+    if (output) return { ...output, model };
+  } catch {
+    // Some free-tier models reject structured output; fall back to plain JSON text.
   }
 
-  return { ...output, model };
+  const { text } = await generateText({ model, prompt });
+  return { ...parseSummaryJson(text), model };
 }
 
 export async function generateDailyBlogPost(
