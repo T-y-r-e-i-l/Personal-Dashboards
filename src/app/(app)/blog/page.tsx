@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { formatPostDateTitle } from "@/lib/blog/dayRange";
+import { formatPostDateTitle, getDayRange } from "@/lib/blog/dayRange";
 
 export default async function BlogIndexPage() {
   const supabase = await createClient();
@@ -10,11 +10,21 @@ export default async function BlogIndexPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: posts, error } = await supabase
-    .from("blog_posts")
-    .select("id, post_date, private_summary, is_public, generated_at")
-    .eq("user_id", user.id)
-    .order("post_date", { ascending: false });
+  const [{ data: profile }, { data: posts, error }] = await Promise.all([
+    supabase
+      .from("profiles")
+      .select("timezone")
+      .eq("id", user.id)
+      .maybeSingle(),
+    supabase
+      .from("blog_posts")
+      .select("id, post_date, private_summary, is_public, generated_at")
+      .eq("user_id", user.id)
+      .order("post_date", { ascending: false }),
+  ]);
+
+  const timeZone = profile?.timezone || "UTC";
+  const todayDate = getDayRange(timeZone).postDate;
 
   if (error) {
     return (
@@ -35,15 +45,27 @@ export default async function BlogIndexPage() {
           Blog
         </h1>
         <p className="mt-2 text-sm text-[var(--muted)]">
-          End-of-day posts generated automatically around 11pm in your timezone —
-          summary plus your original notes.
+          Browse any day as a dashboard — panels and notes for that date, plus an
+          end-of-day digest when one has been generated.
+        </p>
+        <p className="mt-4">
+          <Link
+            href={`/blog/${todayDate}`}
+            className="text-sm font-medium text-[var(--foreground)] underline-offset-4 hover:underline"
+          >
+            Open today (day view)
+          </Link>
         </p>
       </div>
 
+      <h2 className="mb-3 text-xs font-medium uppercase tracking-wide text-[var(--muted)]">
+        Digest archive
+      </h2>
+
       {!posts?.length ? (
         <p className="text-sm text-[var(--muted)]">
-          No posts yet. Capture notes and live your day — a post appears after
-          tonight&apos;s generation window.
+          No digests yet. Open any day to see panels and notes; digests appear after
+          the evening generation window.
         </p>
       ) : (
         <ul className="space-y-4">
