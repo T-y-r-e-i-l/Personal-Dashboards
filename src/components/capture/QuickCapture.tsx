@@ -305,7 +305,7 @@ export function QuickCapture({ userId }: { userId: string }) {
             }}
             rows={4}
             placeholder="Capture a thought..."
-            className="w-full resize-y bg-transparent outline-none placeholder:text-[var(--muted)]"
+            className="w-full resize-y bg-transparent font-[family-name:var(--font-body)] text-sm outline-none placeholder:text-[var(--muted)]"
           />
 
           <div className="mt-3 flex items-center justify-between gap-3 font-[family-name:var(--font-body)] text-sm font-normal">
@@ -525,7 +525,7 @@ function CaptureListItem({
               if (e.key === "Escape") onCancelEdit();
             }}
             rows={5}
-            className="w-full resize-y bg-transparent outline-none"
+            className="w-full resize-y bg-transparent font-[family-name:var(--font-body)] outline-none"
             autoFocus
           />
 
@@ -577,8 +577,8 @@ function CaptureListItem({
   }
 
   return (
-    <li className="group flex flex-col gap-2 border-b border-[var(--border)]/70 pb-3 last:border-0 last:pb-0 md:flex-row md:items-start md:justify-between md:gap-4">
-      <div className="flex shrink-0 items-center justify-between gap-3 font-[family-name:var(--font-body)] text-sm font-normal md:order-2 md:flex-col md:items-end md:gap-2 md:pt-0.5">
+    <li className="group flex flex-col gap-2 border-b border-[var(--border)]/70 pb-3 last:border-0 last:pb-0">
+      <div className="flex w-full shrink-0 items-center justify-between gap-3 font-[family-name:var(--font-body)] text-sm font-normal">
         <time className="text-xs text-[var(--muted)]">
           {format(new Date(stamp), "MMM d · h:mm a")}
           {edited ? " · edited" : ""}
@@ -624,7 +624,7 @@ function CaptureListItem({
             onStartEdit();
           }
         }}
-        className="markdown-body min-w-0 flex-1 cursor-pointer rounded-xl text-left text-[var(--ink)] outline-none transition hover:bg-[var(--surface-soft)]/70 focus-visible:ring-2 focus-visible:ring-[var(--accent)] md:order-1"
+        className="markdown-body min-w-0 w-full cursor-pointer rounded-xl text-left text-[var(--ink)] outline-none transition hover:bg-[var(--surface-soft)]/70 focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
         title="Edit note"
       >
         <MarkdownContent content={item.content} compact />

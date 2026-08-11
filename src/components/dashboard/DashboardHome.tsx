@@ -202,34 +202,29 @@ export function DashboardHome({
     <main className="mx-auto w-full max-w-6xl px-4 py-8 md:px-8">
       <div className="mb-8 hidden flex-col items-start gap-4 md:flex md:flex-row md:flex-wrap md:items-end md:justify-between">
         <div className="min-w-0 md:flex-1">
-          <p className="text-sm text-[var(--muted)]">Today</p>
           <h1 className="font-[family-name:var(--font-display)] text-4xl tracking-tight md:text-5xl">
             {timeOfDayGreeting()}, {firstName}
           </h1>
-          <p className="mt-2 text-sm text-[var(--muted)]">
-            Capture first. Then shape the rest of your day.
-          </p>
-        </div>
-
-        <div className="flex w-full flex-col items-start gap-3 md:w-auto md:flex-row md:flex-wrap md:items-end md:gap-4 md:justify-end">
           <DashboardHeaderMeta
+            variant="inline"
             location={initialProfile?.location}
             timezone={initialProfile?.timezone}
           />
-          {dashboards.length > 1 ? (
-            <select
-              value={activeId ?? ""}
-              onChange={(e) => setActiveId(e.target.value)}
-              className="rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm"
-            >
-              {dashboards.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {d.name}
-                </option>
-              ))}
-            </select>
-          ) : null}
         </div>
+
+        {dashboards.length > 1 ? (
+          <select
+            value={activeId ?? ""}
+            onChange={(e) => setActiveId(e.target.value)}
+            className="rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm"
+          >
+            {dashboards.map((d) => (
+              <option key={d.id} value={d.id}>
+                {d.name}
+              </option>
+            ))}
+          </select>
+        ) : null}
       </div>
 
       <div className="flex flex-col">
