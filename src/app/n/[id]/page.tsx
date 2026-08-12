@@ -1,65 +1,85 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { format } from "date-fns";
-import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient } from "@/lib/supabase/server";
 import { GhostWriterLogo } from "@/components/brand/GhostWriterLogo";
 import { MarkdownContent } from "@/components/markdown/MarkdownContent";
 import { SharedNoteTheme } from "@/components/capture/SharedNoteTheme";
+import { fetchPublicCapture } from "@/lib/capture/fetchPublicCapture";
+import { previewTitleFromMarkdown } from "@/lib/capture/notePreview";
 import {
   fetchPublicNoteAuthor,
   type PublicNoteAuthor,
 } from "@/lib/selfie/publicAuthor";
 
-/** Unlisted share links — keep out of search and AI indexes. */
-export const metadata: Metadata = {
-  robots: {
-    index: false,
-    follow: false,
-    nocache: true,
-    noarchive: true,
-    nosnippet: true,
-    noimageindex: true,
-    googleBot: {
-      index: false,
-      follow: false,
-      noimageindex: true,
-      nosnippet: true,
-      noarchive: true,
-    },
-  },
-};
-
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-async function fetchSharedNote(id: string) {
-  const select =
-    "id, user_id, content, created_at, updated_at, visibility" as const;
+const NOINDEX_ROBOTS = {
+  index: false,
+  follow: false,
+  nocache: true,
+  noarchive: true,
+  nosnippet: true,
+  noimageindex: true,
+  googleBot: {
+    index: false,
+    follow: false,
+    noimageindex: true,
+    nosnippet: true,
+    noarchive: true,
+  },
+} as const;
 
-  // Prefer service role so unlisted public notes work even before/without
-  // the captures_public_read RLS policy being applied.
-  try {
-    const admin = createAdminClient();
-    const result = await admin
-      .from("captures")
-      .select(select)
-      .eq("id", id)
-      .eq("visibility", "public")
-      .maybeSingle();
-    if (!result.error) return { ...result, admin };
-  } catch {
-    // Missing SUPABASE_SERVICE_ROLE_KEY in local/dev — fall through.
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const { id } = await params;
+  if (!UUID_RE.test(id)) {
+    return {
+      title: "Shared note",
+      robots: NOINDEX_ROBOTS,
+    };
   }
 
-  const supabase = await createClient();
-  const result = await supabase
-    .from("captures")
-    .select(select)
-    .eq("id", id)
-    .eq("visibility", "public")
-    .maybeSingle();
-  return { ...result, admin: null };
+  const { data: note, admin } = await fetchPublicCapture(id);
+  if (!note) {
+    return {
+      title: "Shared note",
+      robots: NOINDEX_ROBOTS,
+    };
+  }
+
+  const title = previewTitleFromMarkdown(note.content);
+  let description = "Shared note";
+  if (admin && note.user_id) {
+    try {
+      const author = await fetchPublicNoteAuthor(admin, note.user_id);
+      if (author.displayName && author.displayName !== "Someone") {
+        description = `Shared note from ${author.displayName}`;
+      }
+    } catch {
+      // keep generic description
+    }
+  }
+
+  return {
+    title,
+    description,
+    robots: NOINDEX_ROBOTS,
+    openGraph: {
+      title,
+      description,
+      type: "article",
+      url: `/n/${id}`,
+    },
+    twitter: {
+      card: "summary",
+      title,
+      description,
+    },
+  };
 }
 
 function AuthorRow({ author }: { author: PublicNoteAuthor }) {
@@ -94,7 +114,7 @@ export default async function SharedNotePage({
   const { id } = await params;
   if (!UUID_RE.test(id)) notFound();
 
-  const { data: note, error, admin } = await fetchSharedNote(id);
+  const { data: note, error, admin } = await fetchPublicCapture(id);
   if (error || !note) notFound();
 
   const stamp = note.updated_at || note.created_at;

@@ -29,7 +29,16 @@ const retro = Pixelify_Sans({
   weight: ["400", "500", "600", "700"],
 });
 
+function appOrigin() {
+  const raw =
+    process.env.NEXT_PUBLIC_APP_URL ||
+    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "") ||
+    "http://localhost:3000";
+  return raw.replace(/\/$/, "");
+}
+
 export const metadata: Metadata = {
+  metadataBase: new URL(appOrigin()),
   title: "Ghost Writer",
   description: "A calm, capture-first dashboard for your daily life.",
 };
