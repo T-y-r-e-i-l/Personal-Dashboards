@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useToast } from "@/components/ui/Toast";
 import { GoogleCalendarConnect } from "@/components/settings/GoogleCalendarConnect";
+import { applyRetroTheme } from "@/components/providers/RetroThemeProvider";
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -13,6 +14,7 @@ export default function SettingsPage() {
   const [location, setLocation] = useState("");
   const [timezone, setTimezone] = useState("America/Los_Angeles");
   const [dailySelfieEnabled, setDailySelfieEnabled] = useState(true);
+  const [retroUiEnabled, setRetroUiEnabled] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -35,6 +37,7 @@ export default function SettingsPage() {
         setLocation(data.location ?? "");
         setTimezone(data.timezone ?? "America/Los_Angeles");
         setDailySelfieEnabled(data.daily_selfie_enabled !== false);
+        setRetroUiEnabled(data.retro_ui_enabled === true);
       }
       setLoading(false);
     }
@@ -55,6 +58,7 @@ export default function SettingsPage() {
       location,
       timezone,
       daily_selfie_enabled: dailySelfieEnabled,
+      retro_ui_enabled: retroUiEnabled,
       updated_at: new Date().toISOString(),
     };
 
@@ -75,7 +79,7 @@ export default function SettingsPage() {
         .eq("id", user.id));
       if (!error) {
         showToast(
-          "Profile saved. Run the daily_selfies migration to persist the selfie toggle.",
+          "Profile saved. Run the latest profiles migrations to persist selfie/retro toggles.",
         );
         setSaving(false);
         return;
@@ -87,6 +91,7 @@ export default function SettingsPage() {
       showToast(error.message);
       return;
     }
+    applyRetroTheme(retroUiEnabled);
     showToast("Settings saved");
     router.refresh();
   }
@@ -153,6 +158,20 @@ export default function SettingsPage() {
             <span className="mt-0.5 block text-xs text-[var(--muted)]">
               Capture a daily photo with yesterday’s image ghosted for
               alignment—building a personal timelapse over time.
+            </span>
+          </span>
+        </label>
+        <label className="flex items-start gap-3 rounded-2xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3">
+          <input
+            type="checkbox"
+            checked={retroUiEnabled}
+            onChange={(e) => setRetroUiEnabled(e.target.checked)}
+            className="mt-1"
+          />
+          <span>
+            <span className="block text-sm font-medium">Retro Style</span>
+            <span className="mt-0.5 block text-xs text-[var(--muted)]">
+              Classic Macintosh 8-bit look for the app.
             </span>
           </span>
         </label>

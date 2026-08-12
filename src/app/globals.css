@@ -295,3 +295,256 @@ body {
   display: block;
   max-height: 140px;
 }
+
+/* ─── Retro Style (8-bit System 7) ─────────────────────────────── */
+
+[data-theme="retro"] {
+  --canvas: #9c9c9c;
+  --surface: #ffffff;
+  --surface-soft: #dddddd;
+  --ink: #000000;
+  --muted: #555555;
+  --accent: #000099;
+  --accent-soft: #ccccff;
+  --border: #000000;
+  --danger: #990000;
+  --radius-panel: 0px;
+  --shadow-soft: 2px 2px 0 #000000;
+  --font-body: var(--font-retro);
+  --font-display: var(--font-retro);
+  --mac-platinum: #dddddd;
+  --mac-highlight: #ffffff;
+  --mac-shadow: #888888;
+  --mac-dark: #555555;
+}
+
+[data-theme="retro"] body {
+  background-color: var(--canvas);
+  background-image:
+    linear-gradient(45deg, #8e8e8e 25%, transparent 25%),
+    linear-gradient(-45deg, #8e8e8e 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #8e8e8e 75%),
+    linear-gradient(-45deg, transparent 75%, #8e8e8e 75%);
+  background-size: 4px 4px;
+  background-position:
+    0 0,
+    0 2px,
+    2px -2px,
+    -2px 0;
+  font-family: var(--font-retro), Geneva, Verdana, sans-serif;
+  image-rendering: pixelated;
+}
+
+[data-theme="retro"] ::selection {
+  background: var(--accent);
+  color: #ffffff;
+}
+
+[data-theme="retro"] .panel-card {
+  border: 1px solid #000;
+  border-radius: 0;
+  box-shadow:
+    inset 1px 1px 0 var(--mac-highlight),
+    inset -1px -1px 0 var(--mac-shadow),
+    1px 1px 0 #000;
+  background: var(--surface);
+}
+
+[data-theme="retro"] .panel-title-bar {
+  position: relative;
+  margin: 0;
+  min-height: 22px;
+  padding: 3px 6px !important;
+  padding-top: 3px !important;
+  background: var(--mac-platinum);
+  border-bottom: 1px solid #000;
+  gap: 6px;
+}
+
+[data-theme="retro"] .panel-title-stripes {
+  position: absolute;
+  inset: 4px 8px;
+  z-index: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    to bottom,
+    #000 0,
+    #000 1px,
+    transparent 1px,
+    transparent 3px
+  );
+  opacity: 0.85;
+  mask-image: linear-gradient(
+    to right,
+    transparent 0,
+    #000 12%,
+    #000 88%,
+    transparent 100%
+  );
+}
+
+[data-theme="retro"] .panel-title-label {
+  padding: 0 8px;
+  background: var(--mac-platinum);
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0 !important;
+}
+
+[data-theme="retro"] .panel-title-actions {
+  opacity: 1 !important;
+  gap: 4px;
+  padding-left: 4px;
+  background: var(--mac-platinum);
+}
+
+[data-theme="retro"] .panel-chrome-btn {
+  border-radius: 0 !important;
+  border: 1px solid #000;
+  background: var(--mac-platinum);
+  color: var(--ink) !important;
+  padding: 1px 6px !important;
+  font-size: 11px !important;
+  box-shadow:
+    inset 1px 1px 0 var(--mac-highlight),
+    inset -1px -1px 0 var(--mac-shadow);
+}
+
+[data-theme="retro"] .panel-chrome-btn:hover {
+  background: var(--surface-soft) !important;
+  color: var(--ink) !important;
+}
+
+[data-theme="retro"] .panel-body {
+  padding: 8px 10px !important;
+}
+
+[data-theme="retro"] .dashboard-grid .react-grid-item.react-grid-placeholder {
+  border-radius: 0 !important;
+  border: 1px dashed #000;
+  background: var(--accent-soft) !important;
+}
+
+[data-theme="retro"] .dashboard-grid .react-grid-item > .react-resizable-handle::after {
+  border-color: #000;
+  border-width: 2px;
+}
+
+/* Beveled controls — common pill / rounded patterns */
+[data-theme="retro"] .rounded-full,
+[data-theme="retro"] .rounded-2xl,
+[data-theme="retro"] .rounded-xl,
+[data-theme="retro"] .rounded-\[24px\] {
+  border-radius: 0 !important;
+}
+
+[data-theme="retro"] button[class*="bg-[var(--ink)]"],
+[data-theme="retro"] a[class*="bg-[var(--ink)]"] {
+  background: var(--mac-platinum) !important;
+  color: #000 !important;
+  border: 1px solid #000;
+  box-shadow:
+    inset 1px 1px 0 var(--mac-highlight),
+    inset -1px -1px 0 var(--mac-shadow),
+    1px 1px 0 #000;
+  font-weight: 700;
+}
+
+[data-theme="retro"] button[class*="bg-[var(--ink)]"]:active,
+[data-theme="retro"] a[class*="bg-[var(--ink)]"]:active {
+  box-shadow:
+    inset 1px 1px 0 var(--mac-shadow),
+    inset -1px -1px 0 var(--mac-highlight);
+}
+
+[data-theme="retro"] input,
+[data-theme="retro"] select,
+[data-theme="retro"] textarea {
+  border-radius: 0 !important;
+  border: 1px solid #000 !important;
+  box-shadow: inset 1px 1px 0 var(--mac-shadow);
+  background: #fff !important;
+}
+
+[data-theme="retro"] input:focus,
+[data-theme="retro"] select:focus,
+[data-theme="retro"] textarea:focus {
+  outline: 1px dotted #000;
+  outline-offset: -3px;
+  box-shadow: inset 1px 1px 0 var(--mac-shadow);
+}
+
+/* Modals / dialogs */
+[data-theme="retro"] [role="dialog"] {
+  border-radius: 0 !important;
+  border: 2px solid #000 !important;
+  box-shadow:
+    0 0 0 1px #fff,
+    0 0 0 3px #000,
+    4px 4px 0 #000 !important;
+  background: var(--mac-platinum) !important;
+}
+
+[data-theme="retro"] .app-menubar {
+  display: flex !important;
+  background: var(--mac-platinum) !important;
+  border-top: 1px solid #000099;
+  border-bottom: 1px solid #000099 !important;
+  z-index: 50;
+}
+
+[data-theme="retro"] .app-menubar a,
+[data-theme="retro"] .app-menubar button {
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  border: none !important;
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+[data-theme="retro"] .app-menubar .app-menubar-item:hover,
+[data-theme="retro"] .app-menubar .app-menubar-brand:hover {
+  background: #000099 !important;
+  color: #fff !important;
+}
+
+[data-theme="retro"] .app-menubar .app-menubar-item[aria-current="page"],
+[data-theme="retro"] .app-menubar .app-menubar-item[aria-expanded="true"] {
+  background: #000099 !important;
+  color: #fff !important;
+}
+
+[data-theme="retro"] .app-menubar-signout button {
+  font-size: 11px !important;
+  padding: 0 4px !important;
+  min-height: 0 !important;
+  height: auto !important;
+}
+
+/* Nav lives in the menu bar — hide sidebar and mobile chrome */
+[data-theme="retro"] .app-sidebar {
+  display: none !important;
+}
+
+[data-theme="retro"] header.md\:hidden {
+  display: none !important;
+}
+
+[data-theme="retro"] .markdown-body code,
+[data-theme="retro"] .markdown-body pre {
+  border-radius: 0 !important;
+  border: 1px solid #000;
+}
+
+[data-theme="retro"] [class*="font-[family-name:var(--font-display)]"],
+[data-theme="retro"] [class*="font-display"] {
+  font-family: var(--font-retro), Geneva, Verdana, sans-serif !important;
+  letter-spacing: 0;
+}
+
+[data-theme="retro"] .notes-hand,
+[data-theme="retro"] .notes-hand .markdown-body h1,
+[data-theme="retro"] .notes-hand .markdown-body h2,
+[data-theme="retro"] .notes-hand .markdown-body h3 {
+  font-family: var(--font-retro), Geneva, Verdana, sans-serif;
+}

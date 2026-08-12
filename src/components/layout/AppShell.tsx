@@ -23,7 +23,8 @@ export function AppShell({
   const [ready, setReady] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
-  const addRef = useRef<HTMLDivElement>(null);
+  const menuAddRef = useRef<HTMLDivElement>(null);
+  const sidebarAddRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const stored = window.localStorage.getItem(STORAGE_KEY);
@@ -39,9 +40,10 @@ export function AppShell({
   useEffect(() => {
     if (!addOpen) return;
     function onPointerDown(e: PointerEvent) {
-      if (!addRef.current?.contains(e.target as Node)) {
-        setAddOpen(false);
-      }
+      const target = e.target as Node;
+      const inMenu = menuAddRef.current?.contains(target);
+      const inSidebar = sidebarAddRef.current?.contains(target);
+      if (!inMenu && !inSidebar) setAddOpen(false);
     }
     window.addEventListener("pointerdown", onPointerDown);
     return () => window.removeEventListener("pointerdown", onPointerDown);
@@ -61,9 +63,71 @@ export function AppShell({
   const showAddPanel = canAddPanel && todayActive;
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-screen flex-col">
+      <nav
+        className="app-menubar hidden h-[22px] shrink-0 items-center gap-1 border-b border-[var(--border)] bg-[var(--surface)] px-2 text-[12px] font-bold tracking-tight text-[var(--ink)]"
+        aria-label="Main"
+      >
+        <Link
+          href="/dashboard"
+          className="app-menubar-brand px-2 py-0.5 font-bold hover:bg-[var(--ink)] hover:text-[var(--canvas)]"
+        >
+          Ghost Writer
+        </Link>
+        <MenuBarLink href="/dashboard" active={todayActive}>
+          Today
+        </MenuBarLink>
+        <MenuBarLink href="/blog" active={blogActive}>
+          Blog
+        </MenuBarLink>
+        <MenuBarLink href="/settings" active={settingsActive}>
+          Settings
+        </MenuBarLink>
+        {showAddPanel ? (
+          <div className="relative" ref={menuAddRef}>
+            <button
+              type="button"
+              onClick={() => setAddOpen((v) => !v)}
+              className={`app-menubar-item px-2 py-0.5 font-normal ${
+                addOpen
+                  ? "bg-[var(--ink)] text-[var(--canvas)]"
+                  : "hover:bg-[var(--ink)] hover:text-[var(--canvas)]"
+              }`}
+              aria-expanded={addOpen}
+              aria-haspopup="menu"
+            >
+              Add panel
+            </button>
+            {addOpen ? (
+              <div className="absolute left-0 top-full z-40 mt-0.5">
+                <AddPanelMenu
+                  onSelect={(type) => {
+                    addPanel(type);
+                    setAddOpen(false);
+                  }}
+                  onClose={() => setAddOpen(false)}
+                />
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+        <div className="ml-auto flex min-w-0 items-center gap-1">
+          {email ? (
+            <span
+              className="hidden max-w-[12rem] truncate px-2 font-normal text-[var(--muted)] sm:inline"
+              title={email}
+            >
+              {email}
+            </span>
+          ) : null}
+          <div className="app-menubar-signout px-1">
+            <SignOutButton compact />
+          </div>
+        </div>
+      </nav>
+      <div className="flex min-h-0 min-w-0 flex-1">
       <aside
-        className={`sticky top-0 hidden h-screen shrink-0 flex-col border-r border-[var(--border)] bg-[var(--surface)]/70 py-6 backdrop-blur transition-[width] duration-200 ease-out md:flex ${
+        className={`app-sidebar sticky top-0 hidden h-screen shrink-0 flex-col border-r border-[var(--border)] bg-[var(--surface)]/70 py-6 backdrop-blur transition-[width] duration-200 ease-out md:flex ${
           collapsed ? "relative w-[72px] px-2" : "w-56 px-4"
         } ${ready ? "" : "opacity-0"}`}
       >
@@ -118,7 +182,7 @@ export function AppShell({
         ) : null}
 
         <nav
-          className={`mt-10 flex flex-1 flex-col gap-1 ${collapsed ? "items-center" : ""}`}
+          className={`app-sidebar-nav mt-10 flex flex-1 flex-col gap-1 ${collapsed ? "items-center" : ""}`}
         >
           <NavLink
             href="/dashboard"
@@ -144,10 +208,10 @@ export function AppShell({
         </nav>
 
         <div
-          className={`space-y-3 ${collapsed ? "flex flex-col items-center" : "px-2"}`}
+          className={`app-sidebar-footer space-y-3 ${collapsed ? "flex flex-col items-center" : "px-2"}`}
         >
           {showAddPanel ? (
-            <div className="relative" ref={addRef}>
+            <div className="relative" ref={sidebarAddRef}>
               <button
                 type="button"
                 onClick={() => setAddOpen((v) => !v)}
@@ -284,7 +348,32 @@ export function AppShell({
 
         <div className="flex-1">{children}</div>
       </div>
+      </div>
     </div>
+  );
+}
+
+function MenuBarLink({
+  href,
+  active,
+  children,
+}: {
+  href: string;
+  active: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <Link
+      href={href}
+      className={`app-menubar-item px-2 py-0.5 font-normal ${
+        active
+          ? "bg-[var(--ink)] text-[var(--canvas)]"
+          : "hover:bg-[var(--ink)] hover:text-[var(--canvas)]"
+      }`}
+      aria-current={active ? "page" : undefined}
+    >
+      {children}
+    </Link>
   );
 }
 

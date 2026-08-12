@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Fraunces, DM_Sans, Caveat } from "next/font/google";
+import { Fraunces, DM_Sans, Caveat, Pixelify_Sans } from "next/font/google";
 import { QueryProvider } from "@/components/providers/QueryProvider";
 import { ToastHost } from "@/components/ui/Toast";
 import "./globals.css";
@@ -22,6 +22,13 @@ const notes = Caveat({
   weight: ["400", "500", "600", "700"],
 });
 
+/** Chicago-like bitmap UI face for Retro Style theme. */
+const retro = Pixelify_Sans({
+  variable: "--font-retro",
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+});
+
 export const metadata: Metadata = {
   title: "Ghost Writer",
   description: "A calm, capture-first dashboard for your daily life.",
@@ -31,7 +38,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${display.variable} ${body.variable} ${notes.variable} h-full antialiased`}
+      className={`${display.variable} ${body.variable} ${notes.variable} ${retro.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
         <QueryProvider>

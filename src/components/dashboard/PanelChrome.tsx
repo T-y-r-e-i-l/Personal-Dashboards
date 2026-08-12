@@ -27,12 +27,13 @@ export function PanelChrome({
         collapsible && collapsed ? "h-auto" : "h-full"
       }`}
     >
-      <div className="flex items-center justify-between gap-2 px-4 pt-4">
+      <div className="panel-title-bar flex items-center justify-between gap-2 px-4 pt-4">
+        <div className="panel-title-stripes" aria-hidden />
         {collapsible && onToggleCollapse ? (
           <button
             type="button"
             onClick={onToggleCollapse}
-            className="flex min-w-0 flex-1 items-center gap-2 text-left"
+            className="panel-title-label relative z-[1] flex min-w-0 flex-1 items-center gap-2 text-left"
             aria-expanded={!collapsed}
           >
             <ChevronIcon expanded={!collapsed} />
@@ -41,10 +42,12 @@ export function PanelChrome({
             </h3>
           </button>
         ) : (
-          <h3 className="text-sm font-semibold tracking-tight">{meta.label}</h3>
+          <h3 className="panel-title-label relative z-[1] text-sm font-semibold tracking-tight">
+            {meta.label}
+          </h3>
         )}
         <div
-          className={`flex shrink-0 items-center gap-1 transition ${
+          className={`panel-title-actions relative z-[1] flex shrink-0 items-center gap-1 transition ${
             collapsible
               ? "opacity-100"
               : "opacity-0 group-hover:opacity-100"
@@ -54,7 +57,7 @@ export function PanelChrome({
             <button
               type="button"
               onClick={onConfigure}
-              className="rounded-full px-2 py-1 text-xs text-[var(--muted)] hover:bg-[var(--surface-soft)] hover:text-[var(--ink)]"
+              className="panel-chrome-btn rounded-full px-2 py-1 text-xs text-[var(--muted)] hover:bg-[var(--surface-soft)] hover:text-[var(--ink)]"
               aria-label={`Configure ${meta.label}`}
             >
               Settings
@@ -64,7 +67,7 @@ export function PanelChrome({
             <button
               type="button"
               onClick={onRemove}
-              className="rounded-full px-2 py-1 text-xs text-[var(--muted)] hover:bg-[var(--surface-soft)] hover:text-[var(--danger)]"
+              className="panel-chrome-btn rounded-full px-2 py-1 text-xs text-[var(--muted)] hover:bg-[var(--surface-soft)] hover:text-[var(--danger)]"
               aria-label={`Remove ${meta.label}`}
             >
               Remove
@@ -77,7 +80,7 @@ export function PanelChrome({
           <p className="text-xs text-[var(--muted)]">{meta.description}</p>
         </div>
       ) : (
-        <div className="min-h-0 flex-1 overflow-auto px-4 pb-4 pt-3">
+        <div className="panel-body min-h-0 flex-1 overflow-auto px-4 pb-4 pt-3">
           {children}
         </div>
       )}
