@@ -133,23 +133,52 @@ export function PanelConfigModal({
           )}
 
           {panelType === "timelapse" && (
-            <label className="block text-sm">
-              <span className="mb-1.5 block font-medium">Date range</span>
-              <select
-                value={config.selfieRange ?? "30d"}
-                onChange={(e) =>
-                  setConfig((c) => ({
-                    ...c,
-                    selfieRange: e.target.value as PanelConfig["selfieRange"],
-                  }))
-                }
-                className="w-full rounded-xl border border-[var(--border)] px-3 py-2"
-              >
-                <option value="30d">Last 30 days</option>
-                <option value="90d">Last 90 days</option>
-                <option value="all">All time</option>
-              </select>
-            </label>
+            <div className="space-y-4">
+              <label className="block text-sm">
+                <span className="mb-1.5 block font-medium">Date range</span>
+                <select
+                  value={config.selfieRange ?? "30d"}
+                  onChange={(e) =>
+                    setConfig((c) => ({
+                      ...c,
+                      selfieRange: e.target.value as PanelConfig["selfieRange"],
+                    }))
+                  }
+                  className="w-full rounded-xl border border-[var(--border)] px-3 py-2"
+                >
+                  <option value="30d">Last 30 days</option>
+                  <option value="90d">Last 90 days</option>
+                  <option value="all">All time</option>
+                </select>
+              </label>
+              <label className="block text-sm">
+                <span className="mb-1.5 flex items-center justify-between font-medium">
+                  <span>Playback speed</span>
+                  <span className="tabular-nums text-[var(--muted)]">
+                    {config.timelapseFps ?? 4} fps
+                  </span>
+                </span>
+                <input
+                  type="range"
+                  min={1}
+                  max={12}
+                  step={1}
+                  value={config.timelapseFps ?? 4}
+                  onChange={(e) =>
+                    setConfig((c) => ({
+                      ...c,
+                      timelapseFps: Number(e.target.value),
+                    }))
+                  }
+                  className="w-full accent-[var(--ink)]"
+                  aria-label="Playback speed in frames per second"
+                />
+                <span className="mt-1 flex justify-between text-xs text-[var(--muted)]">
+                  <span>1 fps</span>
+                  <span>12 fps</span>
+                </span>
+              </label>
+            </div>
           )}
 
           {panelType === "time" && (
@@ -230,7 +259,7 @@ export function PanelConfigModal({
             </div>
           )}
 
-          {!["habits", "mood", "tasks", "weather", "time"].includes(
+          {!["habits", "mood", "tasks", "weather", "time", "timelapse"].includes(
             panelType,
           ) && (
             <p className="text-sm text-[var(--muted)]">
@@ -308,7 +337,16 @@ export function PanelConfigModal({
                               pomodoroLongBreakMin: resolved.longBreakMin,
                             };
                           })()
-                        : config;
+                        : panelType === "timelapse"
+                          ? {
+                              ...config,
+                              selfieRange: config.selfieRange ?? "30d",
+                              timelapseFps: Math.min(
+                                12,
+                                Math.max(1, Math.round(config.timelapseFps ?? 4)),
+                              ),
+                            }
+                          : config;
                     onSave(next);
                   } catch (err) {
                     showToast(
