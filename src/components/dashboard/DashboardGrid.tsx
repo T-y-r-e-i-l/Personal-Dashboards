@@ -24,6 +24,7 @@ import { WeatherPanel } from "@/components/panels/WeatherPanel";
 import { CalendarPanel } from "@/components/panels/CalendarPanel";
 import { TimeTrackingPanel } from "@/components/panels/TimeTrackingPanel";
 import { SleepPanel } from "@/components/panels/SleepPanel";
+import { ReflectionPanel } from "@/components/panels/ReflectionPanel";
 
 const BREAKPOINTS = { lg: 768, xs: 0 } as const;
 const COLS = { lg: 12, xs: 1 } as const;
@@ -78,6 +79,8 @@ function renderPanel(
       return <TimeTrackingPanel {...common} config={config} />;
     case "sleep":
       return <SleepPanel {...common} />;
+    case "reflection":
+      return <ReflectionPanel {...common} />;
     default:
       return null;
   }
@@ -235,7 +238,7 @@ export function DashboardGrid({
             enabled: !readOnly,
             handle: ".panel-drag-handle",
             cancel:
-              "button, input, textarea, select, a, .task-drag-handle, .habit-drag-handle",
+              "button, input, textarea, select, a, .task-drag-handle, .habit-drag-handle, .reflection-skip",
           }}
           resizeConfig={{
             enabled: !readOnly,

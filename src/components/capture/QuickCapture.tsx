@@ -18,6 +18,7 @@ import {
 } from "@/lib/export/buildNotesZip";
 import { uploadNoteMedia } from "@/lib/media/noteMedia";
 import { MarkdownContent } from "@/components/markdown/MarkdownContent";
+import { useCaptureDraft } from "@/components/capture/captureDraftStore";
 import { useToast } from "@/components/ui/Toast";
 import type { Capture } from "@/lib/database.types";
 
@@ -172,6 +173,7 @@ export function QuickCapture({ userId }: { userId: string }) {
       setSuccess(true);
       window.setTimeout(() => setSuccess(false), 600);
       showToast("Captured");
+      useCaptureDraft.getState().notifyCaptureSuccess();
       await queryClient.invalidateQueries({ queryKey: ["captures", userId] });
     },
     onError: (err: Error) => showToast(err.message),
@@ -470,10 +472,31 @@ function CaptureComposer({
 }) {
   const [content, setContent] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const pendingText = useCaptureDraft((s) => s.pendingText);
+  const consumeDraft = useCaptureDraft((s) => s.consumeDraft);
 
   useEffect(() => {
     if (success) setContent("");
   }, [success]);
+
+  useEffect(() => {
+    if (pendingText == null) return;
+    const draft = consumeDraft();
+    if (!draft) return;
+    setContent((prev) => {
+      const trimmed = prev.trimEnd();
+      return trimmed ? `${trimmed}\n\n${draft.text}` : draft.text;
+    });
+    window.requestAnimationFrame(() => {
+      const el = textareaRef.current;
+      if (!el) return;
+      el.focus();
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      const len = el.value.length;
+      el.setSelectionRange(len, len);
+    });
+  }, [pendingText, consumeDraft]);
 
   function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -490,6 +513,7 @@ function CaptureComposer({
         }`}
       >
         <textarea
+          ref={textareaRef}
           value={content}
           onChange={(e) => setContent(e.target.value)}
           onKeyDown={(e) => {

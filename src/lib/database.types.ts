@@ -15,7 +15,8 @@ export type PanelType =
   | "weather"
   | "calendar"
   | "time"
-  | "sleep";
+  | "sleep"
+  | "reflection";
 
 export type SleepRating = "poor" | "fair" | "good" | "excellent";
 

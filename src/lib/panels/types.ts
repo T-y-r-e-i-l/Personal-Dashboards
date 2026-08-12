@@ -60,6 +60,12 @@ export const PANEL_META: Record<
     defaultH: 3,
     description: "Last night's sleep start, end, duration, score, and rating",
   },
+  reflection: {
+    label: "Reflection",
+    defaultW: 3,
+    defaultH: 3,
+    description: "A daily prompt for journaling and self-reflection",
+  },
 };
 
 export type PanelConfig = {
