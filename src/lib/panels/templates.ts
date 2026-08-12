@@ -54,7 +54,8 @@ export const TEMPLATES: DashboardTemplate[] = [
       { panel_type: "habits", x: 0, y: 0, w: 4, h: 3 },
       { panel_type: "mood", x: 4, y: 0, w: 4, h: 3 },
       { panel_type: "reflection", x: 0, y: 3, w: 4, h: 3 },
-      { panel_type: "calendar", x: 4, y: 3, w: 4, h: 3 },
+      { panel_type: "timelapse", x: 4, y: 3, w: 4, h: 3 },
+      { panel_type: "calendar", x: 8, y: 3, w: 4, h: 3 },
     ],
   },
   {

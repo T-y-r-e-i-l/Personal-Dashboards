@@ -65,6 +65,9 @@ export function DailySelfieButton({
           void queryClient.invalidateQueries({
             queryKey: ["daily-selfie", userId, selfieDate],
           });
+          void queryClient.invalidateQueries({
+            queryKey: ["daily-selfie-timelapse", userId],
+          });
         }}
       />
     </>

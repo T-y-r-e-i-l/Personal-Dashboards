@@ -105,3 +105,80 @@ export async function upsertDailySelfie(
 
   return data as DailySelfie;
 }
+
+export type SelfieRange = "30d" | "90d" | "all";
+
+export function selfieRangeBounds(
+  timeZone: string,
+  range: SelfieRange,
+  endDate?: string,
+  now = new Date(),
+): { startDate: string | null; endDate: string } {
+  const end = endDate ?? todaySelfieDate(timeZone, now);
+  if (range === "all") return { startDate: null, endDate: end };
+  const days = range === "30d" ? 30 : 90;
+  return {
+    startDate: shiftPostDate(end, -(days - 1)),
+    endDate: end,
+  };
+}
+
+export async function fetchSelfiesInRange(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: SupabaseClient<any>,
+  userId: string,
+  {
+    startDate,
+    endDate,
+    limit = 400,
+  }: {
+    startDate: string | null;
+    endDate: string;
+    limit?: number;
+  },
+): Promise<DailySelfie[]> {
+  let query = supabase
+    .from("daily_selfies")
+    .select("*")
+    .eq("user_id", userId)
+    .lte("selfie_date", endDate)
+    .order("selfie_date", { ascending: true })
+    .limit(limit);
+
+  if (startDate) {
+    query = query.gte("selfie_date", startDate);
+  }
+
+  const { data, error } = await query;
+  if (error) {
+    if (/column|schema cache|relation|does not exist/i.test(error.message)) {
+      return [];
+    }
+    throw error;
+  }
+  return (data ?? []) as DailySelfie[];
+}
+
+export type SelfieFrame = {
+  selfieDate: string;
+  storagePath: string;
+  url: string;
+};
+
+export async function resolveSelfieFrames(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: SupabaseClient<any>,
+  rows: DailySelfie[],
+): Promise<SelfieFrame[]> {
+  const frames: SelfieFrame[] = [];
+  for (const row of rows) {
+    const url = await resolveSelfieUrl(supabase, row.storage_path);
+    if (!url) continue;
+    frames.push({
+      selfieDate: row.selfie_date,
+      storagePath: row.storage_path,
+      url,
+    });
+  }
+  return frames;
+}

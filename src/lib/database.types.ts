@@ -16,7 +16,8 @@ export type PanelType =
   | "calendar"
   | "time"
   | "sleep"
-  | "reflection";
+  | "reflection"
+  | "timelapse";
 
 export type SleepRating = "poor" | "fair" | "good" | "excellent";
 

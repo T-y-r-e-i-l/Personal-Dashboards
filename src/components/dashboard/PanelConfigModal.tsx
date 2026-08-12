@@ -132,6 +132,26 @@ export function PanelConfigModal({
             </label>
           )}
 
+          {panelType === "timelapse" && (
+            <label className="block text-sm">
+              <span className="mb-1.5 block font-medium">Date range</span>
+              <select
+                value={config.selfieRange ?? "30d"}
+                onChange={(e) =>
+                  setConfig((c) => ({
+                    ...c,
+                    selfieRange: e.target.value as PanelConfig["selfieRange"],
+                  }))
+                }
+                className="w-full rounded-xl border border-[var(--border)] px-3 py-2"
+              >
+                <option value="30d">Last 30 days</option>
+                <option value="90d">Last 90 days</option>
+                <option value="all">All time</option>
+              </select>
+            </label>
+          )}
+
           {panelType === "time" && (
             <div className="space-y-3">
               <span className="block text-sm font-medium">Pomodoro lengths</span>

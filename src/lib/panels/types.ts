@@ -66,6 +66,12 @@ export const PANEL_META: Record<
     defaultH: 3,
     description: "A daily prompt for journaling and self-reflection",
   },
+  timelapse: {
+    label: "Timelapse",
+    defaultW: 3,
+    defaultH: 3,
+    description: "Play daily selfies oldest to newest",
+  },
 };
 
 export type PanelConfig = {
@@ -77,4 +83,8 @@ export type PanelConfig = {
   pomodoroFocusMin?: number;
   pomodoroShortBreakMin?: number;
   pomodoroLongBreakMin?: number;
+  /** Timelapse: selfie lookback range. */
+  selfieRange?: "30d" | "90d" | "all";
+  /** Timelapse playback speed (frames per second). */
+  timelapseFps?: number;
 };

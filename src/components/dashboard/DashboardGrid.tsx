@@ -25,6 +25,7 @@ import { CalendarPanel } from "@/components/panels/CalendarPanel";
 import { TimeTrackingPanel } from "@/components/panels/TimeTrackingPanel";
 import { SleepPanel } from "@/components/panels/SleepPanel";
 import { ReflectionPanel } from "@/components/panels/ReflectionPanel";
+import { SelfieTimelapsePanel } from "@/components/panels/SelfieTimelapsePanel";
 
 const BREAKPOINTS = { lg: 768, xs: 0 } as const;
 const COLS = { lg: 12, xs: 1 } as const;
@@ -81,6 +82,8 @@ function renderPanel(
       return <SleepPanel {...common} />;
     case "reflection":
       return <ReflectionPanel {...common} />;
+    case "timelapse":
+      return <SelfieTimelapsePanel {...common} config={config} />;
     default:
       return null;
   }
