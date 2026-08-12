@@ -303,6 +303,7 @@ export function DashboardGrid({
           panelType={configuring.panel_type as PanelType}
           initial={(configuring.config ?? {}) as PanelConfig}
           userId={userId}
+          date={date}
           onClose={() => setConfigPanelId(null)}
           onSave={(config) => {
             onUpdateConfig(configuring.id, config);

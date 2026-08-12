@@ -1,9 +1,11 @@
 "use client";
 
+import { format } from "date-fns";
 import { useRef, useState } from "react";
 import type { PanelConfig, PanelType } from "@/lib/panels/types";
 import { PANEL_META } from "@/lib/panels/types";
 import { HabitsSettingsList } from "@/components/dashboard/HabitsSettingsList";
+import { SleepSettingsForm } from "@/components/dashboard/SleepSettingsForm";
 import { TasksSettingsList } from "@/components/dashboard/TasksSettingsList";
 import { resolvePomodoroConfig } from "@/lib/time/pomodoro";
 import { useToast } from "@/components/ui/Toast";
@@ -14,6 +16,7 @@ export function PanelConfigModal({
   panelType,
   initial,
   userId,
+  date,
   onClose,
   onSave,
   onSwap,
@@ -21,6 +24,7 @@ export function PanelConfigModal({
   panelType: PanelType;
   initial: PanelConfig;
   userId: string;
+  date?: string;
   onClose: () => void;
   onSave: (config: PanelConfig) => void;
   onSwap: (type: PanelType) => void;
@@ -32,9 +36,11 @@ export function PanelConfigModal({
     () => ALL_PANEL_TYPES.find((type) => type !== panelType) ?? panelType,
   );
   const tasksSaveRef = useRef<(() => Promise<void>) | null>(null);
+  const sleepSaveRef = useRef<(() => Promise<void>) | null>(null);
   const showToast = useToast((s) => s.show);
   const meta = PANEL_META[panelType];
   const swapOptions = ALL_PANEL_TYPES.filter((type) => type !== panelType);
+  const sleepDate = date ?? format(new Date(), "yyyy-MM-dd");
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
@@ -259,7 +265,15 @@ export function PanelConfigModal({
             </div>
           )}
 
-          {!["habits", "mood", "tasks", "weather", "time", "timelapse"].includes(
+          {panelType === "sleep" && (
+            <SleepSettingsForm
+              userId={userId}
+              sleepDate={sleepDate}
+              saveRef={sleepSaveRef}
+            />
+          )}
+
+          {!["habits", "mood", "tasks", "weather", "time", "timelapse", "sleep"].includes(
             panelType,
           ) && (
             <p className="text-sm text-[var(--muted)]">
@@ -325,6 +339,10 @@ export function PanelConfigModal({
                   try {
                     if (panelType === "tasks" && tasksSaveRef.current) {
                       await tasksSaveRef.current();
+                    }
+                    if (panelType === "sleep" && sleepSaveRef.current) {
+                      await sleepSaveRef.current();
+                      showToast("Sleep saved");
                     }
                     const next =
                       panelType === "time"
