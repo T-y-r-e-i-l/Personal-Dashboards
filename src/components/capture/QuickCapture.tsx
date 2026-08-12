@@ -471,8 +471,10 @@ function CaptureComposer({
   ) => void;
 }) {
   const [content, setContent] = useState("");
+  const [focusFlash, setFocusFlash] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const shellRef = useRef<HTMLDivElement>(null);
   const pendingText = useCaptureDraft((s) => s.pendingText);
   const consumeDraft = useCaptureDraft((s) => s.consumeDraft);
 
@@ -488,11 +490,13 @@ function CaptureComposer({
       const trimmed = prev.trimEnd();
       return trimmed ? `${trimmed}\n\n${draft.text}` : draft.text;
     });
+    setFocusFlash(true);
     window.requestAnimationFrame(() => {
+      const shell = shellRef.current;
       const el = textareaRef.current;
+      shell?.scrollIntoView({ behavior: "smooth", block: "center" });
       if (!el) return;
-      el.focus();
-      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      el.focus({ preventScroll: true });
       const len = el.value.length;
       el.setSelectionRange(len, len);
     });
@@ -508,9 +512,13 @@ function CaptureComposer({
   return (
     <form onSubmit={onSubmit}>
       <div
+        ref={shellRef}
+        onAnimationEnd={(e) => {
+          if (e.animationName === "capture-focus") setFocusFlash(false);
+        }}
         className={`rounded-[24px] border border-[var(--border)] bg-[var(--surface)] p-4 shadow-[var(--shadow-soft)] ${
           success ? "capture-success" : ""
-        }`}
+        } ${focusFlash ? "capture-focus" : ""}`}
       >
         <textarea
           ref={textareaRef}
