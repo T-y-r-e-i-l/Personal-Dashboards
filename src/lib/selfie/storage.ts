@@ -37,6 +37,27 @@ export async function fetchSelfieForDate(
   return (data as DailySelfie | null) ?? null;
 }
 
+export async function fetchLatestSelfie(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: SupabaseClient<any>,
+  userId: string,
+): Promise<DailySelfie | null> {
+  const { data, error } = await supabase
+    .from("daily_selfies")
+    .select("*")
+    .eq("user_id", userId)
+    .order("selfie_date", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) {
+    if (/column|schema cache|relation|does not exist/i.test(error.message)) {
+      return null;
+    }
+    throw error;
+  }
+  return (data as DailySelfie | null) ?? null;
+}
+
 export async function resolveSelfieUrl(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   supabase: SupabaseClient<any>,
