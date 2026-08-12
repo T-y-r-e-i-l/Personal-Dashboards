@@ -588,13 +588,118 @@ body {
   height: auto !important;
 }
 
-/* Nav lives in the menu bar — hide sidebar and mobile chrome */
+[data-theme="retro"] .app-menubar-mobile-toggle[aria-expanded="true"] {
+  background: #000099 !important;
+  color: #fff !important;
+}
+
+/* Nav lives in the menu bar — hide sidebar and default mobile header */
 [data-theme="retro"] .app-sidebar {
   display: none !important;
 }
 
-[data-theme="retro"] header.md\:hidden {
+[data-theme="retro"] .app-mobile-header {
   display: none !important;
+}
+
+/* Mobile nav opens as a retro window with desktop-style page icons */
+.app-mobile-nav-window.panel-card {
+  height: auto;
+  max-height: min(32rem, calc(100dvh - 2.5rem));
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--shadow-soft);
+}
+
+.app-mobile-nav-window .panel-body {
+  overflow: auto;
+}
+
+.app-mobile-nav-icon {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.25rem;
+  border-radius: 0.5rem;
+  text-align: center;
+  color: var(--ink);
+  text-decoration: none;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font: inherit;
+  min-width: 0;
+}
+
+.app-mobile-nav-glyph {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 0.35rem;
+}
+
+.app-mobile-nav-label {
+  font-size: 0.75rem;
+  line-height: 1.15;
+  font-weight: 600;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.app-mobile-nav-icon.is-active .app-mobile-nav-glyph,
+.app-mobile-nav-icon:focus-visible .app-mobile-nav-glyph {
+  outline: 1px dotted var(--ink);
+  outline-offset: 2px;
+  background: var(--accent-soft);
+}
+
+.app-mobile-nav-icon.is-active .app-mobile-nav-label {
+  background: var(--accent);
+  color: #fff;
+  padding: 0 0.25rem;
+}
+
+[data-theme="retro"] .app-mobile-nav-window.panel-card {
+  border-radius: 0;
+  box-shadow:
+    inset 1px 1px 0 var(--mac-highlight),
+    inset -1px -1px 0 var(--mac-shadow),
+    2px 2px 0 #000;
+}
+
+[data-theme="retro"] .app-mobile-nav-icon {
+  border-radius: 0;
+}
+
+[data-theme="retro"] .app-mobile-nav-glyph {
+  border-radius: 0;
+  image-rendering: pixelated;
+}
+
+[data-theme="retro"] .app-mobile-nav-icon.is-active .app-mobile-nav-glyph,
+[data-theme="retro"] .app-mobile-nav-icon:focus-visible .app-mobile-nav-glyph {
+  outline: 1px dotted #fff;
+  outline-offset: -1px;
+  background: var(--accent);
+}
+
+[data-theme="retro"] .app-mobile-nav-icon.is-active .app-mobile-nav-glyph svg rect[fill="#fff"],
+[data-theme="retro"] .app-mobile-nav-icon:focus-visible .app-mobile-nav-glyph svg rect[fill="#fff"] {
+  fill: #ccccff;
+}
+
+[data-theme="retro"] .app-mobile-nav-icon.is-active .app-mobile-nav-label,
+[data-theme="retro"] .app-mobile-nav-icon:focus-visible .app-mobile-nav-label {
+  background: var(--accent);
+  color: #fff;
+  padding: 0 3px;
+}
+
+[data-theme="retro"] .app-mobile-nav-footer {
+  border-color: #000 !important;
 }
 
 [data-theme="retro"] .markdown-body code,

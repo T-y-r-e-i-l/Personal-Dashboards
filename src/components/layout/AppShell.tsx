@@ -10,6 +10,8 @@ import { AddPanelMenu } from "@/components/dashboard/AddPanelMenu";
 
 const STORAGE_KEY = "pd-sidebar-collapsed";
 
+type NavIconName = "today" | "blog" | "settings" | "add";
+
 export function AppShell({
   email,
   children,
@@ -25,6 +27,7 @@ export function AppShell({
   const [addOpen, setAddOpen] = useState(false);
   const menuAddRef = useRef<HTMLDivElement>(null);
   const sidebarAddRef = useRef<HTMLDivElement>(null);
+  const mobileMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const stored = window.localStorage.getItem(STORAGE_KEY);
@@ -43,7 +46,8 @@ export function AppShell({
       const target = e.target as Node;
       const inMenu = menuAddRef.current?.contains(target);
       const inSidebar = sidebarAddRef.current?.contains(target);
-      if (!inMenu && !inSidebar) setAddOpen(false);
+      const inMobile = mobileMenuRef.current?.contains(target);
+      if (!inMenu && !inSidebar && !inMobile) setAddOpen(false);
     }
     window.addEventListener("pointerdown", onPointerDown);
     return () => window.removeEventListener("pointerdown", onPointerDown);
@@ -74,17 +78,21 @@ export function AppShell({
         >
           Ghost Writer
         </Link>
-        <MenuBarLink href="/dashboard" active={todayActive}>
+        <MenuBarLink href="/dashboard" active={todayActive} className="max-md:hidden">
           Today
         </MenuBarLink>
-        <MenuBarLink href="/blog" active={blogActive}>
+        <MenuBarLink href="/blog" active={blogActive} className="max-md:hidden">
           Blog
         </MenuBarLink>
-        <MenuBarLink href="/settings" active={settingsActive}>
+        <MenuBarLink
+          href="/settings"
+          active={settingsActive}
+          className="max-md:hidden"
+        >
           Settings
         </MenuBarLink>
         {showAddPanel ? (
-          <div className="relative" ref={menuAddRef}>
+          <div className="relative max-md:hidden" ref={menuAddRef}>
             <button
               type="button"
               onClick={() => setAddOpen((v) => !v)}
@@ -111,7 +119,21 @@ export function AppShell({
             ) : null}
           </div>
         ) : null}
-        <div className="ml-auto flex min-w-0 items-center gap-1">
+        <button
+          type="button"
+          onClick={() => setMobileOpen((open) => !open)}
+          className={`app-menubar-mobile-toggle ml-auto px-2 py-0.5 font-normal md:hidden ${
+            mobileOpen
+              ? "bg-[var(--ink)] text-[var(--canvas)]"
+              : "hover:bg-[var(--ink)] hover:text-[var(--canvas)]"
+          }`}
+          aria-expanded={mobileOpen}
+          aria-controls="app-mobile-nav-window"
+          aria-haspopup="dialog"
+        >
+          Menu
+        </button>
+        <div className="ml-auto hidden min-w-0 items-center gap-1 md:flex">
           {email ? (
             <span
               className="hidden max-w-[12rem] truncate px-2 font-normal text-[var(--muted)] sm:inline"
@@ -252,7 +274,7 @@ export function AppShell({
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex items-center justify-between border-b border-[var(--border)] px-4 py-3 md:hidden">
+        <header className="app-mobile-header flex items-center justify-between border-b border-[var(--border)] px-4 py-3 md:hidden">
           <Link href="/dashboard" className="text-lg">
             <GhostWriterLogo markSize={24} className="text-lg" />
           </Link>
@@ -262,85 +284,108 @@ export function AppShell({
             className="rounded-xl p-2 text-[var(--ink)] hover:bg-[var(--surface-soft)]"
             aria-label="Open menu"
             aria-expanded={mobileOpen}
+            aria-controls="app-mobile-nav-window"
           >
             <HamburgerIcon />
           </button>
         </header>
 
         {mobileOpen ? (
-          <div className="fixed inset-0 z-40 md:hidden">
+          <div className="app-mobile-nav-overlay fixed inset-0 z-[60] md:hidden">
             <button
               type="button"
               className="absolute inset-0 bg-[var(--ink)]/30"
               aria-label="Close menu"
               onClick={() => setMobileOpen(false)}
             />
-            <div className="absolute inset-y-0 right-0 flex w-[min(20rem,88vw)] flex-col border-l border-[var(--border)] bg-[var(--surface)] shadow-xl">
-              <div className="flex items-center justify-between border-b border-[var(--border)] px-4 py-3">
-                <p className="font-[family-name:var(--font-display)] text-lg">
-                  Menu
-                </p>
-                <button
-                  type="button"
-                  onClick={() => setMobileOpen(false)}
-                  className="rounded-xl px-2 py-1 text-sm text-[var(--muted)] hover:text-[var(--ink)]"
-                >
-                  Close
-                </button>
+            <div
+              id="app-mobile-nav-window"
+              ref={mobileMenuRef}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Ghost Writer"
+              className="app-mobile-nav-window panel-card absolute left-1/2 top-[max(1.25rem,env(safe-area-inset-top))] w-[min(20.5rem,calc(100vw-1.5rem))] -translate-x-1/2 overflow-hidden"
+            >
+              <div className="panel-title-bar flex items-center justify-between gap-2 px-4 pt-4">
+                <div className="panel-title-stripes" aria-hidden />
+                <div className="panel-title-leading relative z-[1] flex min-w-0 flex-1 items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setMobileOpen(false)}
+                    className="panel-close-box panel-chrome-btn shrink-0 rounded-full px-2 py-1 text-xs text-[var(--muted)] transition hover:bg-[var(--surface-soft)] hover:text-[var(--danger)]"
+                    aria-label="Close menu"
+                  >
+                    <span className="panel-close-box-label">Close</span>
+                  </button>
+                  <h2 className="panel-title-label truncate text-sm font-semibold tracking-tight">
+                    Ghost Writer
+                  </h2>
+                </div>
               </div>
-              <nav className="flex flex-1 flex-col gap-1 p-3">
-                <MobileNavLink
-                  href="/dashboard"
-                  label="Today"
-                  active={todayActive}
-                  onNavigate={() => setMobileOpen(false)}
-                />
-                <MobileNavLink
-                  href="/blog"
-                  label="Blog"
-                  active={blogActive}
-                  onNavigate={() => setMobileOpen(false)}
-                />
-                <MobileNavLink
-                  href="/settings"
-                  label="Settings"
-                  active={settingsActive}
-                  onNavigate={() => setMobileOpen(false)}
-                />
-                {showAddPanel ? (
-                  <div className="mt-4 border-t border-[var(--border)] pt-4">
-                    <p className="mb-2 px-3 text-xs font-medium uppercase tracking-wide text-[var(--muted)]">
-                      Dashboard
-                    </p>
+              <div className="panel-body px-4 pb-4 pt-3">
+                <nav
+                  className="app-mobile-nav-icons grid grid-cols-3 gap-x-2 gap-y-3"
+                  aria-label="Pages"
+                >
+                  <MobileNavIcon
+                    href="/dashboard"
+                    label="Today"
+                    active={todayActive}
+                    icon="today"
+                    onNavigate={() => setMobileOpen(false)}
+                  />
+                  <MobileNavIcon
+                    href="/blog"
+                    label="Blog"
+                    active={blogActive}
+                    icon="blog"
+                    onNavigate={() => setMobileOpen(false)}
+                  />
+                  <MobileNavIcon
+                    href="/settings"
+                    label="Settings"
+                    active={settingsActive}
+                    icon="settings"
+                    onNavigate={() => setMobileOpen(false)}
+                  />
+                  {showAddPanel ? (
                     <button
                       type="button"
                       onClick={() => setAddOpen((v) => !v)}
-                      className="flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-sm text-[var(--muted)] hover:bg-[var(--surface-soft)] hover:text-[var(--ink)]"
+                      className={`app-mobile-nav-icon ${addOpen ? "is-active" : ""}`}
+                      aria-expanded={addOpen}
+                      aria-haspopup="menu"
                     >
-                      Add panel
-                      <span className="text-xs">{addOpen ? "−" : "+"}</span>
+                      <span className="app-mobile-nav-glyph" aria-hidden>
+                        <PageUiIcon name="add" />
+                      </span>
+                      <span className="app-mobile-nav-label">Add panel</span>
                     </button>
-                    {addOpen ? (
-                      <div className="mt-2 px-1">
-                        <AddPanelMenu
-                          onSelect={(type) => {
-                            addPanel(type);
-                            setAddOpen(false);
-                            setMobileOpen(false);
-                          }}
-                        />
-                      </div>
-                    ) : null}
+                  ) : null}
+                </nav>
+                {showAddPanel && addOpen ? (
+                  <div className="mt-3">
+                    <AddPanelMenu
+                      onSelect={(type) => {
+                        addPanel(type);
+                        setAddOpen(false);
+                        setMobileOpen(false);
+                      }}
+                      onClose={() => setAddOpen(false)}
+                    />
                   </div>
                 ) : null}
-              </nav>
-              <div className="space-y-3 border-t border-[var(--border)] px-4 py-4">
-                {email ? (
-                  <p className="truncate text-xs text-[var(--muted)]" title={email}>
-                    {email}
-                  </p>
-                ) : null}
-                <SignOutButton />
+                <div className="app-mobile-nav-footer mt-4 space-y-3 border-t border-[var(--border)] pt-3">
+                  {email ? (
+                    <p
+                      className="truncate text-xs text-[var(--muted)]"
+                      title={email}
+                    >
+                      {email}
+                    </p>
+                  ) : null}
+                  <SignOutButton />
+                </div>
               </div>
             </div>
           </div>
@@ -357,10 +402,12 @@ function MenuBarLink({
   href,
   active,
   children,
+  className = "",
 }: {
   href: string;
   active: boolean;
   children: React.ReactNode;
+  className?: string;
 }) {
   return (
     <Link
@@ -369,7 +416,7 @@ function MenuBarLink({
         active
           ? "bg-[var(--ink)] text-[var(--canvas)]"
           : "hover:bg-[var(--ink)] hover:text-[var(--canvas)]"
-      }`}
+      } ${className}`}
       aria-current={active ? "page" : undefined}
     >
       {children}
@@ -388,7 +435,7 @@ function NavLink({
   label: string;
   collapsed: boolean;
   active: boolean;
-  icon: "today" | "blog" | "settings";
+  icon: Exclude<NavIconName, "add">;
 }) {
   return (
     <Link
@@ -409,33 +456,83 @@ function NavLink({
   );
 }
 
-function MobileNavLink({
+function MobileNavIcon({
   href,
   label,
   active,
+  icon,
   onNavigate,
 }: {
   href: string;
   label: string;
   active: boolean;
+  icon: Exclude<NavIconName, "add">;
   onNavigate: () => void;
 }) {
   return (
     <Link
       href={href}
       onClick={onNavigate}
-      className={`rounded-xl px-3 py-2.5 text-sm font-medium ${
-        active
-          ? "bg-[var(--surface-soft)] text-[var(--ink)]"
-          : "text-[var(--muted)] hover:bg-[var(--surface-soft)] hover:text-[var(--ink)]"
-      }`}
+      className={`app-mobile-nav-icon ${active ? "is-active" : ""}`}
+      aria-current={active ? "page" : undefined}
     >
-      {label}
+      <span className="app-mobile-nav-glyph" aria-hidden>
+        <PageUiIcon name={icon} />
+      </span>
+      <span className="app-mobile-nav-label">{label}</span>
     </Link>
   );
 }
 
-function NavIcon({ name }: { name: "today" | "blog" | "settings" }) {
+function PageUiIcon({ name }: { name: NavIconName }) {
+  if (name === "today") {
+    return (
+      <svg width="32" height="32" viewBox="0 0 32 32" fill="none" aria-hidden>
+        <rect x="4" y="5" width="24" height="22" fill="#fff" stroke="#000" strokeWidth="1.5" />
+        <rect x="4" y="5" width="24" height="6" fill="#dddddd" stroke="#000" strokeWidth="1.5" />
+        <path d="M10 3.5v5M22 3.5v5" stroke="#000" strokeWidth="1.5" strokeLinecap="square" />
+        <rect x="8" y="15" width="5" height="4" fill="#000099" />
+        <rect x="14" y="15" width="5" height="4" fill="#fff" stroke="#000" strokeWidth="1" />
+        <rect x="20" y="15" width="4" height="4" fill="#fff" stroke="#000" strokeWidth="1" />
+        <rect x="8" y="21" width="5" height="3" fill="#fff" stroke="#000" strokeWidth="1" />
+        <rect x="14" y="21" width="5" height="3" fill="#fff" stroke="#000" strokeWidth="1" />
+      </svg>
+    );
+  }
+
+  if (name === "blog") {
+    return (
+      <svg width="32" height="32" viewBox="0 0 32 32" fill="none" aria-hidden>
+        <rect x="7" y="4" width="18" height="24" fill="#fff" stroke="#000" strokeWidth="1.5" />
+        <path d="M11 10h10M11 14h10M11 18h7" stroke="#000" strokeWidth="1.5" />
+        <rect x="5" y="6" width="18" height="24" fill="#eeeeee" stroke="#000" strokeWidth="1.5" />
+        <path d="M9 12h10M9 16h10M9 20h6" stroke="#000" strokeWidth="1.5" />
+      </svg>
+    );
+  }
+
+  if (name === "add") {
+    return (
+      <svg width="32" height="32" viewBox="0 0 32 32" fill="none" aria-hidden>
+        <rect x="4" y="6" width="24" height="20" fill="#fff" stroke="#000" strokeWidth="1.5" />
+        <rect x="4" y="6" width="24" height="5" fill="#dddddd" stroke="#000" strokeWidth="1.5" />
+        <path d="M16 13v10M11 18h10" stroke="#000" strokeWidth="2" strokeLinecap="square" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg width="32" height="32" viewBox="0 0 32 32" fill="none" aria-hidden>
+      <rect x="4" y="5" width="24" height="22" fill="#fff" stroke="#000" strokeWidth="1.5" />
+      <rect x="4" y="5" width="24" height="5" fill="#dddddd" stroke="#000" strokeWidth="1.5" />
+      <circle cx="12" cy="18" r="3" fill="#dddddd" stroke="#000" strokeWidth="1.25" />
+      <path d="M17 15h7M17 18h7M17 21h5" stroke="#000" strokeWidth="1.5" />
+      <path d="M10 18h4" stroke="#000" strokeWidth="1.25" />
+    </svg>
+  );
+}
+
+function NavIcon({ name }: { name: Exclude<NavIconName, "add"> }) {
   if (name === "today") {
     return (
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
