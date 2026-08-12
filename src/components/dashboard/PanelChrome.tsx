@@ -29,51 +29,57 @@ export function PanelChrome({
     >
       <div className="panel-title-bar flex items-center justify-between gap-2 px-4 pt-4">
         <div className="panel-title-stripes" aria-hidden />
-        {collapsible && onToggleCollapse ? (
-          <button
-            type="button"
-            onClick={onToggleCollapse}
-            className="panel-title-label relative z-[1] flex min-w-0 flex-1 items-center gap-2 text-left"
-            aria-expanded={!collapsed}
-          >
-            <ChevronIcon expanded={!collapsed} />
-            <h3 className="truncate text-sm font-semibold tracking-tight">
-              {meta.label}
-            </h3>
-          </button>
-        ) : (
-          <h3 className="panel-title-label relative z-[1] text-sm font-semibold tracking-tight">
-            {meta.label}
-          </h3>
-        )}
-        <div
-          className={`panel-title-actions relative z-[1] flex shrink-0 items-center gap-1 transition ${
-            collapsible
-              ? "opacity-100"
-              : "opacity-0 group-hover:opacity-100"
-          }`}
-        >
-          {onConfigure ? (
-            <button
-              type="button"
-              onClick={onConfigure}
-              className="panel-chrome-btn rounded-full px-2 py-1 text-xs text-[var(--muted)] hover:bg-[var(--surface-soft)] hover:text-[var(--ink)]"
-              aria-label={`Configure ${meta.label}`}
-            >
-              Settings
-            </button>
-          ) : null}
+        <div className="panel-title-leading relative z-[1] flex min-w-0 flex-1 items-center gap-2">
           {onRemove ? (
             <button
               type="button"
               onClick={onRemove}
-              className="panel-chrome-btn rounded-full px-2 py-1 text-xs text-[var(--muted)] hover:bg-[var(--surface-soft)] hover:text-[var(--danger)]"
+              className={`panel-close-box panel-chrome-btn shrink-0 rounded-full px-2 py-1 text-xs text-[var(--muted)] transition hover:bg-[var(--surface-soft)] hover:text-[var(--danger)] ${
+                collapsible
+                  ? "opacity-100"
+                  : "opacity-0 group-hover:opacity-100"
+              }`}
               aria-label={`Remove ${meta.label}`}
             >
-              Remove
+              <span className="panel-close-box-label">Remove</span>
             </button>
           ) : null}
+          {collapsible && onToggleCollapse ? (
+            <button
+              type="button"
+              onClick={onToggleCollapse}
+              className="panel-title-label flex min-w-0 flex-1 items-center gap-2 text-left"
+              aria-expanded={!collapsed}
+            >
+              <ChevronIcon expanded={!collapsed} />
+              <h3 className="truncate text-sm font-semibold tracking-tight">
+                {meta.label}
+              </h3>
+            </button>
+          ) : (
+            <h3 className="panel-title-label text-sm font-semibold tracking-tight">
+              {meta.label}
+            </h3>
+          )}
         </div>
+        {onConfigure ? (
+          <div
+            className={`panel-title-actions relative z-[1] flex shrink-0 items-center gap-1 transition ${
+              collapsible
+                ? "opacity-100"
+                : "opacity-0 group-hover:opacity-100"
+            }`}
+          >
+            <button
+              type="button"
+              onClick={onConfigure}
+              className="panel-settings-btn panel-chrome-btn rounded-full px-2 py-1 text-xs text-[var(--muted)] hover:bg-[var(--surface-soft)] hover:text-[var(--ink)]"
+              aria-label={`Configure ${meta.label}`}
+            >
+              Settings
+            </button>
+          </div>
+        ) : null}
       </div>
       {collapsible && collapsed ? (
         <div className="px-4 pb-3 pt-1">

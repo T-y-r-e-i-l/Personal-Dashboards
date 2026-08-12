@@ -377,10 +377,14 @@ body {
   mask-image: linear-gradient(
     to right,
     transparent 0,
-    #000 12%,
-    #000 88%,
+    #000 18%,
+    #000 82%,
     transparent 100%
   );
+}
+
+[data-theme="retro"] .panel-title-leading {
+  gap: 6px;
 }
 
 [data-theme="retro"] .panel-title-label {
@@ -391,14 +395,55 @@ body {
   letter-spacing: 0 !important;
 }
 
-[data-theme="retro"] .panel-title-actions {
+/* Mac close box — always visible, top-left of title bar */
+[data-theme="retro"] .panel-close-box {
   opacity: 1 !important;
+  width: 13px;
+  height: 13px;
+  min-width: 13px;
+  padding: 0 !important;
+  margin-left: 2px;
+  border-radius: 0 !important;
+  border: 1px solid #000 !important;
+  background: var(--mac-platinum) !important;
+  box-shadow:
+    inset 1px 1px 0 var(--mac-highlight),
+    inset -1px -1px 0 var(--mac-shadow);
+  color: transparent !important;
+  font-size: 0 !important;
+  line-height: 0;
+}
+
+[data-theme="retro"] .panel-close-box-label {
+  display: none;
+}
+
+[data-theme="retro"] .panel-close-box:hover,
+[data-theme="retro"] .panel-close-box:active {
+  background: #bbbbbb !important;
+  color: transparent !important;
+}
+
+[data-theme="retro"] .panel-close-box:active {
+  box-shadow:
+    inset 1px 1px 0 var(--mac-shadow),
+    inset -1px -1px 0 var(--mac-highlight);
+}
+
+/* Settings only on panel hover */
+[data-theme="retro"] .panel-title-actions {
+  opacity: 0 !important;
   gap: 4px;
   padding-left: 4px;
   background: var(--mac-platinum);
 }
 
-[data-theme="retro"] .panel-chrome-btn {
+[data-theme="retro"] .panel-card:hover .panel-title-actions,
+[data-theme="retro"] .panel-card:focus-within .panel-title-actions {
+  opacity: 1 !important;
+}
+
+[data-theme="retro"] .panel-chrome-btn:not(.panel-close-box) {
   border-radius: 0 !important;
   border: 1px solid #000;
   background: var(--mac-platinum);
@@ -410,7 +455,7 @@ body {
     inset -1px -1px 0 var(--mac-shadow);
 }
 
-[data-theme="retro"] .panel-chrome-btn:hover {
+[data-theme="retro"] .panel-chrome-btn:not(.panel-close-box):hover {
   background: var(--surface-soft) !important;
   color: var(--ink) !important;
 }
