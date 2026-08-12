@@ -1,10 +1,17 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  type ReactNode,
+} from "react";
 import { createPortal } from "react-dom";
 import ReactMarkdown, { defaultUrlTransform } from "react-markdown";
 import { createClient } from "@/lib/supabase/client";
 import {
+  getCachedSignedUrl,
   isMediaSrc,
   mediaKindFromSrc,
   resolveMediaUrl,
@@ -14,6 +21,38 @@ function urlTransform(url: string) {
   if (url.startsWith("media://")) return url;
   return defaultUrlTransform(url);
 }
+
+const CompactContext = createContext(false);
+
+/** Stable component map so ReactMarkdown does not remount media on parent re-renders. */
+const markdownComponents = {
+  img: function MarkdownImg({
+    src,
+    alt,
+  }: {
+    src?: string | Blob;
+    alt?: string;
+  }) {
+    return (
+      <MediaImage
+        src={typeof src === "string" ? src : undefined}
+        alt={alt}
+      />
+    );
+  },
+  a: function MarkdownAnchor({
+    href,
+    children,
+  }: {
+    href?: string;
+    children?: ReactNode;
+  }) {
+    return <MediaLink href={href}>{children}</MediaLink>;
+  },
+  p: function MarkdownParagraph({ children }: { children?: ReactNode }) {
+    return <div className="md-block">{children}</div>;
+  },
+};
 
 export function MarkdownContent({
   content,
@@ -25,45 +64,23 @@ export function MarkdownContent({
   compact?: boolean;
 }) {
   return (
-    <div
-      className={`${className ?? ""} ${compact ? "markdown-compact" : ""}`.trim()}
-    >
-      <ReactMarkdown
-        urlTransform={urlTransform}
-        components={{
-          img: ({ src, alt }) => (
-            <MediaImage
-              src={typeof src === "string" ? src : undefined}
-              alt={alt}
-              compact={compact}
-            />
-          ),
-          a: ({ href, children }) => (
-            <MediaLink
-              href={typeof href === "string" ? href : undefined}
-              compact={compact}
-            >
-              {children}
-            </MediaLink>
-          ),
-          p: ({ children }) => <div className="md-block">{children}</div>,
-        }}
+    <CompactContext.Provider value={compact}>
+      <div
+        className={`${className ?? ""} ${compact ? "markdown-compact" : ""}`.trim()}
       >
-        {content}
-      </ReactMarkdown>
-    </div>
+        <ReactMarkdown
+          urlTransform={urlTransform}
+          components={markdownComponents}
+        >
+          {content}
+        </ReactMarkdown>
+      </div>
+    </CompactContext.Provider>
   );
 }
 
-function MediaImage({
-  src,
-  alt,
-  compact,
-}: {
-  src?: string;
-  alt?: string;
-  compact?: boolean;
-}) {
+function MediaImage({ src, alt }: { src?: string; alt?: string }) {
+  const compact = useContext(CompactContext);
   const { url, error, loading } = useSignedUrl(src);
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -168,12 +185,11 @@ function MediaImage({
 function MediaLink({
   href,
   children,
-  compact,
 }: {
   href?: string;
   children: React.ReactNode;
-  compact?: boolean;
 }) {
+  const compact = useContext(CompactContext);
   const { url, error, loading } = useSignedUrl(href);
   const kind = href ? mediaKindFromSrc(href) : "file";
 
@@ -232,10 +248,18 @@ function MediaLink({
   );
 }
 
+function initialSignedUrl(src?: string): string | null {
+  if (!src) return null;
+  if (!isMediaSrc(src)) return src;
+  return getCachedSignedUrl(src);
+}
+
 function useSignedUrl(src?: string) {
-  const [url, setUrl] = useState<string | null>(null);
+  const [url, setUrl] = useState<string | null>(() => initialSignedUrl(src));
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(Boolean(src));
+  const [loading, setLoading] = useState(
+    () => Boolean(src) && !initialSignedUrl(src),
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -255,6 +279,13 @@ function useSignedUrl(src?: string) {
         return;
       }
 
+      const cached = getCachedSignedUrl(src);
+      if (cached) {
+        setUrl(cached);
+        setLoading(false);
+        return;
+      }
+
       setLoading(true);
       try {
         const supabase = createClient();
@@ -269,8 +300,7 @@ function useSignedUrl(src?: string) {
           setLoading(false);
           setError(
             err instanceof Error
-              ? err.message.includes("Bucket not found") ||
-                err.message.includes("not found")
+              ? /bucket not found/i.test(err.message)
                 ? "Storage not set up — run note-media migration"
                 : err.message
               : "Could not load media",

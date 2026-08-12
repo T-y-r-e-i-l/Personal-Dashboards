@@ -66,7 +66,6 @@ function mapCaptures(
 }
 
 export function QuickCapture({ userId }: { userId: string }) {
-  const [content, setContent] = useState("");
   const [success, setSuccess] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -75,7 +74,6 @@ export function QuickCapture({ userId }: { userId: string }) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
   const deferredSearch = useDeferredValue(search.trim());
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const showToast = useToast((s) => s.show);
   const queryClient = useQueryClient();
   const supabase = createClient();
@@ -171,7 +169,6 @@ export function QuickCapture({ userId }: { userId: string }) {
       throw lastError ?? new Error("Failed to save capture");
     },
     onSuccess: async () => {
-      setContent("");
       setSuccess(true);
       window.setTimeout(() => setSuccess(false), 600);
       showToast("Captured");
@@ -259,13 +256,6 @@ export function QuickCapture({ userId }: { userId: string }) {
     onError: (err: Error) => showToast(err.message),
   });
 
-  function onSubmit(e: FormEvent) {
-    e.preventDefault();
-    const trimmed = content.trim();
-    if (!trimmed) return;
-    capture.mutate(trimmed);
-  }
-
   async function onFilesSelected(
     files: FileList | null,
     setText: (updater: (prev: string) => string) => void,
@@ -290,7 +280,6 @@ export function QuickCapture({ userId }: { userId: string }) {
       showToast(err instanceof Error ? err.message : "Upload failed");
     } finally {
       setUploading(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
     }
   }
 
@@ -325,57 +314,13 @@ export function QuickCapture({ userId }: { userId: string }) {
 
   return (
     <section className="notes-hand w-full">
-      <form onSubmit={onSubmit}>
-        <div
-          className={`rounded-[24px] border border-[var(--border)] bg-[var(--surface)] p-4 shadow-[var(--shadow-soft)] ${
-            success ? "capture-success" : ""
-          }`}
-        >
-          <textarea
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            onKeyDown={(e) => {
-              if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
-                e.preventDefault();
-                onSubmit(e);
-              }
-            }}
-            rows={4}
-            placeholder="Capture a thought..."
-            className="w-full resize-y bg-transparent font-[family-name:var(--font-body)] text-sm outline-none placeholder:text-[var(--muted)]"
-          />
-
-          <div className="mt-3 flex items-center justify-between gap-3 font-[family-name:var(--font-body)] text-sm font-normal">
-            <div className="flex items-center gap-2">
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*,video/*,audio/*,application/pdf"
-                multiple
-                className="hidden"
-                onChange={(e) => void onFilesSelected(e.target.files, setContent)}
-              />
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={uploading}
-                className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--canvas)] px-3 py-1.5 text-xs font-medium text-[var(--ink)] transition hover:bg-[var(--surface-soft)] disabled:opacity-50"
-                title="Upload media"
-              >
-                <PaperclipIcon />
-                {uploading ? "Uploading…" : "Add media"}
-              </button>
-            </div>
-            <button
-              type="submit"
-              disabled={capture.isPending || !content.trim() || uploading}
-              className="rounded-full bg-[var(--ink)] px-4 py-2 text-sm font-medium text-[var(--canvas)] disabled:opacity-50"
-            >
-              Capture
-            </button>
-          </div>
-        </div>
-      </form>
+      <CaptureComposer
+        pending={capture.isPending}
+        uploading={uploading}
+        success={success}
+        onCapture={(text) => capture.mutate(text)}
+        onFilesSelected={onFilesSelected}
+      />
 
       <div className="mt-4 flex items-center gap-2 font-[family-name:var(--font-body)] text-sm font-normal">
         {searchOpen || search ? (
@@ -504,6 +449,94 @@ export function QuickCapture({ userId }: { userId: string }) {
         </p>
       )}
     </section>
+  );
+}
+
+function CaptureComposer({
+  pending,
+  uploading,
+  success,
+  onCapture,
+  onFilesSelected,
+}: {
+  pending: boolean;
+  uploading: boolean;
+  success: boolean;
+  onCapture: (text: string) => void;
+  onFilesSelected: (
+    files: FileList | null,
+    setText: (updater: (prev: string) => string) => void,
+  ) => void;
+}) {
+  const [content, setContent] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (success) setContent("");
+  }, [success]);
+
+  function onSubmit(e: FormEvent) {
+    e.preventDefault();
+    const trimmed = content.trim();
+    if (!trimmed) return;
+    onCapture(trimmed);
+  }
+
+  return (
+    <form onSubmit={onSubmit}>
+      <div
+        className={`rounded-[24px] border border-[var(--border)] bg-[var(--surface)] p-4 shadow-[var(--shadow-soft)] ${
+          success ? "capture-success" : ""
+        }`}
+      >
+        <textarea
+          value={content}
+          onChange={(e) => setContent(e.target.value)}
+          onKeyDown={(e) => {
+            if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+              e.preventDefault();
+              onSubmit(e);
+            }
+          }}
+          rows={4}
+          placeholder="Capture a thought..."
+          className="w-full resize-y bg-transparent font-[family-name:var(--font-body)] text-sm outline-none placeholder:text-[var(--muted)]"
+        />
+
+        <div className="mt-3 flex items-center justify-between gap-3 font-[family-name:var(--font-body)] text-sm font-normal">
+          <div className="flex items-center gap-2">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*,video/*,audio/*,application/pdf"
+              multiple
+              className="hidden"
+              onChange={(e) => {
+                void onFilesSelected(e.target.files, setContent);
+                e.target.value = "";
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+              className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--canvas)] px-3 py-1.5 text-xs font-medium text-[var(--ink)] transition hover:bg-[var(--surface-soft)] disabled:opacity-50"
+              title="Upload media"
+            >
+              <PaperclipIcon />
+              {uploading ? "Uploading…" : "Add media"}
+            </button>
+          </div>
+          <button
+            type="submit"
+            disabled={pending || !content.trim() || uploading}
+            className="rounded-full bg-[var(--ink)] px-4 py-2 text-sm font-medium text-[var(--canvas)] disabled:opacity-50"
+          >
+            Capture
+          </button>
+        </div>
+      </div>
+    </form>
   );
 }
 

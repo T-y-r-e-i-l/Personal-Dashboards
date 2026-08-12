@@ -87,12 +87,31 @@ export async function uploadNoteMedia(
   };
 }
 
+/** Signed URLs last 1h; cache slightly shorter so we refresh before expiry. */
+const SIGNED_URL_CACHE_TTL_MS = 50 * 60 * 1000;
+const signedUrlCache = new Map<string, { url: string; expiresAt: number }>();
+
+export function getCachedSignedUrl(src: string): string | null {
+  if (!isMediaSrc(src)) return null;
+  const entry = signedUrlCache.get(src);
+  if (!entry) return null;
+  if (Date.now() >= entry.expiresAt) {
+    signedUrlCache.delete(src);
+    return null;
+  }
+  return entry.url;
+}
+
 export async function resolveMediaUrl(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   supabase: SupabaseClient<any>,
   src: string,
 ) {
   if (!isMediaSrc(src)) return src;
+
+  const cached = getCachedSignedUrl(src);
+  if (cached) return cached;
+
   const path = mediaSrcToPath(src);
   const { data, error } = await supabase.storage
     .from(NOTE_MEDIA_BUCKET)
@@ -101,6 +120,11 @@ export async function resolveMediaUrl(
   if (error || !data?.signedUrl) {
     throw error ?? new Error("Could not resolve media URL");
   }
+
+  signedUrlCache.set(src, {
+    url: data.signedUrl,
+    expiresAt: Date.now() + SIGNED_URL_CACHE_TTL_MS,
+  });
   return data.signedUrl;
 }
 
