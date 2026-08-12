@@ -30,6 +30,7 @@ export type Database = {
           timezone: string;
           location: string | null;
           onboarding_completed: boolean;
+          daily_selfie_enabled: boolean;
           created_at: string;
           updated_at: string;
         };
@@ -39,6 +40,7 @@ export type Database = {
           timezone?: string;
           location?: string | null;
           onboarding_completed?: boolean;
+          daily_selfie_enabled?: boolean;
           created_at?: string;
           updated_at?: string;
         };
@@ -351,6 +353,25 @@ export type Database = {
         };
         Update: Partial<Database["public"]["Tables"]["sleep_logs"]["Insert"]>;
       };
+      daily_selfies: {
+        Row: {
+          id: string;
+          user_id: string;
+          selfie_date: string;
+          storage_path: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          selfie_date: string;
+          storage_path: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["daily_selfies"]["Insert"]>;
+      };
     };
   };
 };
@@ -372,3 +393,4 @@ export type CalendarEvent =
   Database["public"]["Tables"]["calendar_events"]["Row"];
 export type TimeEntry = Database["public"]["Tables"]["time_entries"]["Row"];
 export type SleepLog = Database["public"]["Tables"]["sleep_logs"]["Row"];
+export type DailySelfie = Database["public"]["Tables"]["daily_selfies"]["Row"];

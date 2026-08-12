@@ -11,6 +11,7 @@ import { QuickCapture } from "@/components/capture/QuickCapture";
 import { DashboardGrid } from "@/components/dashboard/DashboardGrid";
 import { DashboardHeaderMeta } from "@/components/dashboard/DashboardHeaderMeta";
 import { useDashboardActions } from "@/components/dashboard/DashboardActionsContext";
+import { DailySelfieButton } from "@/components/selfie/DailySelfieButton";
 import { useToast } from "@/components/ui/Toast";
 
 export function DashboardHome({
@@ -201,15 +202,23 @@ export function DashboardHome({
   return (
     <main className="mx-auto w-full max-w-6xl px-4 py-8 md:px-8">
       <div className="mb-8 hidden flex-col items-start gap-4 md:flex md:flex-row md:flex-wrap md:items-end md:justify-between">
-        <div className="min-w-0 md:flex-1">
-          <h1 className="font-[family-name:var(--font-display)] text-4xl tracking-tight md:text-5xl">
-            {timeOfDayGreeting()}, {firstName}
-          </h1>
-          <DashboardHeaderMeta
-            variant="inline"
-            location={initialProfile?.location}
-            timezone={initialProfile?.timezone}
-          />
+        <div className="flex min-w-0 items-center gap-4 md:flex-1">
+          {initialProfile?.daily_selfie_enabled !== false ? (
+            <DailySelfieButton
+              userId={userId}
+              timeZone={initialProfile?.timezone ?? "America/Los_Angeles"}
+            />
+          ) : null}
+          <div className="min-w-0 flex-1">
+            <h1 className="font-[family-name:var(--font-display)] text-4xl tracking-tight md:text-5xl">
+              {timeOfDayGreeting()}, {firstName}
+            </h1>
+            <DashboardHeaderMeta
+              variant="inline"
+              location={initialProfile?.location}
+              timezone={initialProfile?.timezone}
+            />
+          </div>
         </div>
 
         {dashboards.length > 1 ? (

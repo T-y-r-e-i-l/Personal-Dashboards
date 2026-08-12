@@ -1,15 +1,18 @@
 "use client";
 
 import { FormEvent, Suspense, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useToast } from "@/components/ui/Toast";
 import { GoogleCalendarConnect } from "@/components/settings/GoogleCalendarConnect";
 
 export default function SettingsPage() {
+  const router = useRouter();
   const showToast = useToast((s) => s.show);
   const [displayName, setDisplayName] = useState("");
   const [location, setLocation] = useState("");
   const [timezone, setTimezone] = useState("America/Los_Angeles");
+  const [dailySelfieEnabled, setDailySelfieEnabled] = useState(true);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -31,6 +34,7 @@ export default function SettingsPage() {
         setDisplayName(data.display_name ?? "");
         setLocation(data.location ?? "");
         setTimezone(data.timezone ?? "America/Los_Angeles");
+        setDailySelfieEnabled(data.daily_selfie_enabled !== false);
       }
       setLoading(false);
     }
@@ -46,18 +50,45 @@ export default function SettingsPage() {
     } = await supabase.auth.getUser();
     if (!user) return;
 
-    const { error } = await supabase
+    const payload = {
+      display_name: displayName,
+      location,
+      timezone,
+      daily_selfie_enabled: dailySelfieEnabled,
+      updated_at: new Date().toISOString(),
+    };
+
+    let { error } = await supabase
       .from("profiles")
-      .update({
-        display_name: displayName,
-        location,
-        timezone,
-        updated_at: new Date().toISOString(),
-      })
+      .update(payload)
       .eq("id", user.id);
 
+    if (error && /column|schema cache/i.test(error.message)) {
+      ({ error } = await supabase
+        .from("profiles")
+        .update({
+          display_name: displayName,
+          location,
+          timezone,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", user.id));
+      if (!error) {
+        showToast(
+          "Profile saved. Run the daily_selfies migration to persist the selfie toggle.",
+        );
+        setSaving(false);
+        return;
+      }
+    }
+
     setSaving(false);
-    showToast(error ? error.message : "Settings saved");
+    if (error) {
+      showToast(error.message);
+      return;
+    }
+    showToast("Settings saved");
+    router.refresh();
   }
 
   if (loading) {
@@ -107,6 +138,23 @@ export default function SettingsPage() {
             onChange={(e) => setTimezone(e.target.value)}
             className="w-full rounded-2xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3 outline-none ring-[var(--accent)] focus:ring-2"
           />
+        </label>
+        <label className="flex items-start gap-3 rounded-2xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3">
+          <input
+            type="checkbox"
+            checked={dailySelfieEnabled}
+            onChange={(e) => setDailySelfieEnabled(e.target.checked)}
+            className="mt-1"
+          />
+          <span>
+            <span className="block text-sm font-medium">
+              Show daily selfie beside greeting
+            </span>
+            <span className="mt-0.5 block text-xs text-[var(--muted)]">
+              Capture a daily photo with yesterday’s image ghosted for
+              alignment—building a personal timelapse over time.
+            </span>
+          </span>
         </label>
         <button
           type="submit"
