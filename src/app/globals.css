@@ -397,6 +397,7 @@ body {
 
 /* Mac close box — always visible, top-left of title bar */
 [data-theme="retro"] .panel-close-box {
+  display: block;
   opacity: 1 !important;
   width: 13px;
   height: 13px;
@@ -412,6 +413,18 @@ body {
   color: transparent !important;
   font-size: 0 !important;
   line-height: 0;
+}
+
+[data-theme="retro"] .shared-note-window {
+  margin-top: 2rem;
+}
+
+[data-theme="retro"] .shared-note-window .panel-title-bar {
+  padding: 3px 6px !important;
+}
+
+[data-theme="retro"] .shared-note-window .panel-body {
+  background: #fff;
 }
 
 [data-theme="retro"] .panel-close-box-label {

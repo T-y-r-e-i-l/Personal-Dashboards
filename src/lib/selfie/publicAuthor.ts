@@ -5,6 +5,7 @@ export type PublicNoteAuthor = {
   displayName: string;
   selfieUrl: string | null;
   initials: string;
+  retroUiEnabled: boolean;
 };
 
 function initialsFromName(name: string) {
@@ -19,11 +20,19 @@ export async function fetchPublicNoteAuthor(
   supabase: SupabaseClient<any>,
   userId: string,
 ): Promise<PublicNoteAuthor> {
-  const { data: profile } = await supabase
+  let { data: profile, error } = await supabase
     .from("profiles")
-    .select("display_name")
+    .select("display_name, retro_ui_enabled")
     .eq("id", userId)
     .maybeSingle();
+
+  if (error && /column|schema cache/i.test(error.message)) {
+    ({ data: profile } = await supabase
+      .from("profiles")
+      .select("display_name")
+      .eq("id", userId)
+      .maybeSingle());
+  }
 
   const rawName =
     typeof profile?.display_name === "string" ? profile.display_name.trim() : "";
@@ -43,5 +52,6 @@ export async function fetchPublicNoteAuthor(
     displayName,
     selfieUrl,
     initials: initialsFromName(displayName),
+    retroUiEnabled: profile?.retro_ui_enabled === true,
   };
 }

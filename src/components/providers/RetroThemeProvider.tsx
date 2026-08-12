@@ -19,7 +19,7 @@ export function RetroThemeProvider({ enabled }: { enabled: boolean }) {
   useEffect(() => {
     applyRetroTheme(enabled);
     return () => {
-      // Leaving the authenticated app — clear theme so public pages stay default.
+      // Leaving the authenticated app — clear so public pages can set author theme.
       delete document.documentElement.dataset.theme;
     };
   }, [enabled]);

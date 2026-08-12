@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { GhostWriterLogo } from "@/components/brand/GhostWriterLogo";
 import { MarkdownContent } from "@/components/markdown/MarkdownContent";
+import { SharedNoteTheme } from "@/components/capture/SharedNoteTheme";
 import {
   fetchPublicNoteAuthor,
   type PublicNoteAuthor,
@@ -41,6 +42,30 @@ async function fetchSharedNote(id: string) {
   return { ...result, admin: null };
 }
 
+function AuthorRow({ author }: { author: PublicNoteAuthor }) {
+  return (
+    <div className="mt-3 flex items-center gap-3">
+      <div className="h-11 w-11 shrink-0 overflow-hidden rounded-full border border-[var(--border)] bg-[var(--canvas)]">
+        {author.selfieUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={author.selfieUrl}
+            alt=""
+            className="h-full w-full scale-x-[-1] object-cover"
+          />
+        ) : (
+          <span className="flex h-full w-full items-center justify-center text-xs font-medium text-[var(--muted)]">
+            {author.initials}
+          </span>
+        )}
+      </div>
+      <p className="font-[family-name:var(--font-body)] text-base font-medium text-[var(--ink)]">
+        {author.displayName}
+      </p>
+    </div>
+  );
+}
+
 export default async function SharedNotePage({
   params,
 }: {
@@ -63,45 +88,66 @@ export default async function SharedNotePage({
     }
   }
 
+  const retro = author?.retroUiEnabled === true;
+  const stampLabel = format(new Date(stamp), "MMMM d, yyyy · h:mm a");
+
   return (
-    <main className="mx-auto min-h-screen w-full max-w-2xl px-6 py-14">
-      <GhostWriterLogo markSize={22} className="text-sm text-[var(--muted)]" />
-      <p className="mt-6 font-[family-name:var(--font-body)] text-xs font-normal text-[var(--muted)]">
-        Shared note
-      </p>
+    <>
+      {retro ? (
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `document.documentElement.dataset.theme="retro"`,
+          }}
+        />
+      ) : null}
+      <SharedNoteTheme retroUiEnabled={retro} />
 
-      {author && (
-        <div className="mt-3 flex items-center gap-3">
-          <div className="h-11 w-11 shrink-0 overflow-hidden rounded-full border border-[var(--border)] bg-[var(--canvas)]">
-            {author.selfieUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={author.selfieUrl}
-                alt=""
-                className="h-full w-full scale-x-[-1] object-cover"
+      <main className="mx-auto min-h-screen w-full max-w-2xl px-6 py-14">
+        <GhostWriterLogo markSize={22} className="text-sm text-[var(--muted)]" />
+
+        {retro ? (
+          <div className="panel-card shared-note-window mt-8 overflow-hidden">
+            <div className="panel-title-bar flex items-center gap-2 px-2 py-1">
+              <div className="panel-title-stripes" aria-hidden />
+              <span
+                className="panel-close-box pointer-events-none shrink-0"
+                aria-hidden
               />
-            ) : (
-              <span className="flex h-full w-full items-center justify-center text-xs font-medium text-[var(--muted)]">
-                {author.initials}
-              </span>
-            )}
+              <h1 className="panel-title-label relative z-[1] text-sm font-semibold tracking-tight">
+                Shared note
+              </h1>
+            </div>
+            <div className="panel-body space-y-3 px-4 py-4">
+              {author ? <AuthorRow author={author} /> : null}
+              <time
+                dateTime={stamp}
+                className="block font-[family-name:var(--font-body)] text-sm font-normal text-[var(--muted)]"
+              >
+                {stampLabel}
+              </time>
+              <article className="notes-hand markdown-body pt-2">
+                <MarkdownContent content={note.content} />
+              </article>
+            </div>
           </div>
-          <p className="font-[family-name:var(--font-body)] text-base font-medium text-[var(--ink)]">
-            {author.displayName}
-          </p>
-        </div>
-      )}
-
-      <time
-        dateTime={stamp}
-        className="mt-2 block font-[family-name:var(--font-body)] text-sm font-normal text-[var(--muted)]"
-      >
-        {format(new Date(stamp), "MMMM d, yyyy · h:mm a")}
-      </time>
-
-      <article className="notes-hand markdown-body mt-8">
-        <MarkdownContent content={note.content} />
-      </article>
-    </main>
+        ) : (
+          <>
+            <p className="mt-6 font-[family-name:var(--font-body)] text-xs font-normal text-[var(--muted)]">
+              Shared note
+            </p>
+            {author ? <AuthorRow author={author} /> : null}
+            <time
+              dateTime={stamp}
+              className="mt-2 block font-[family-name:var(--font-body)] text-sm font-normal text-[var(--muted)]"
+            >
+              {stampLabel}
+            </time>
+            <article className="notes-hand markdown-body mt-8">
+              <MarkdownContent content={note.content} />
+            </article>
+          </>
+        )}
+      </main>
+    </>
   );
 }
