@@ -511,11 +511,20 @@ body {
   background: #fff !important;
 }
 
+[data-theme="retro"] textarea {
+  padding: 12px;
+}
+
+[data-theme="retro"] input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]),
+[data-theme="retro"] select {
+  padding: 8px 10px;
+}
+
 [data-theme="retro"] input:focus,
 [data-theme="retro"] select:focus,
 [data-theme="retro"] textarea:focus {
   outline: 1px dotted #000;
-  outline-offset: -3px;
+  outline-offset: -4px;
   box-shadow: inset 1px 1px 0 var(--mac-shadow);
 }
 
