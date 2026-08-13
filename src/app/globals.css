@@ -553,11 +553,22 @@ body {
 }
 
 [data-theme="retro"] .app-menubar {
-  display: flex !important;
   background: var(--mac-platinum) !important;
   border-top: 1px solid #000099;
   border-bottom: 1px solid #000099 !important;
   z-index: 50;
+}
+
+@media (min-width: 768px) {
+  [data-theme="retro"] .app-menubar {
+    display: flex !important;
+  }
+}
+
+@media (max-width: 767px) {
+  [data-theme="retro"] .app-menubar {
+    display: none !important;
+  }
 }
 
 [data-theme="retro"] .app-menubar a,
@@ -588,13 +599,53 @@ body {
   height: auto !important;
 }
 
-/* Nav lives in the menu bar — hide sidebar and mobile chrome */
+/* Nav lives in the menu bar on desktop; mobile uses hamburger + Finder window */
 [data-theme="retro"] .app-sidebar {
   display: none !important;
 }
 
-[data-theme="retro"] header.md\:hidden {
-  display: none !important;
+[data-theme="retro"] .app-mobile-header {
+  display: flex !important;
+  background: var(--mac-platinum) !important;
+  border-bottom: 1px solid #000 !important;
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+}
+
+[data-theme="retro"] .app-mobile-header button {
+  border-radius: 0 !important;
+  border: 1px solid #000;
+  background: var(--mac-platinum);
+  box-shadow:
+    inset 1px 1px 0 var(--mac-highlight),
+    inset -1px -1px 0 var(--mac-shadow);
+  padding: 0.25rem 0.4rem !important;
+}
+
+[data-theme="retro"] .mobile-finder-window {
+  box-shadow:
+    0 0 0 1px #fff,
+    0 0 0 3px #000,
+    4px 4px 0 #000;
+}
+
+[data-theme="retro"] .mobile-finder-icon {
+  padding: 4px 2px;
+  text-decoration: none;
+  color: var(--ink);
+  border-radius: 0;
+}
+
+[data-theme="retro"] .mobile-finder-icon.is-active .mobile-finder-label,
+[data-theme="retro"] .mobile-finder-icon:focus-visible .mobile-finder-label {
+  background: #000099;
+  color: #fff;
+  padding: 1px 4px;
+}
+
+[data-theme="retro"] .mobile-finder-label {
+  font-family: var(--font-retro), Geneva, Verdana, sans-serif;
+  font-weight: 700;
 }
 
 [data-theme="retro"] .markdown-body code,

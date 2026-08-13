@@ -7,14 +7,17 @@ import { GhostWriterLogo } from "@/components/brand/GhostWriterLogo";
 import { SignOutButton } from "@/components/ui/SignOutButton";
 import { useDashboardActions } from "@/components/dashboard/DashboardActionsContext";
 import { AddPanelMenu } from "@/components/dashboard/AddPanelMenu";
+import { MobileFinderNav } from "@/components/layout/MobileFinderNav";
 
 const STORAGE_KEY = "pd-sidebar-collapsed";
 
 export function AppShell({
   email,
+  retroEnabled = false,
   children,
 }: {
   email: string | undefined;
+  retroEnabled?: boolean;
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
@@ -126,228 +129,290 @@ export function AppShell({
         </div>
       </nav>
       <div className="flex min-h-0 min-w-0 flex-1">
-      <aside
-        className={`app-sidebar sticky top-0 hidden h-screen shrink-0 flex-col border-r border-[var(--border)] bg-[var(--surface)]/70 py-6 backdrop-blur transition-[width] duration-200 ease-out md:flex ${
-          collapsed ? "relative w-[72px] px-2" : "w-56 px-4"
-        } ${ready ? "" : "opacity-0"}`}
-      >
-        <div
-          className={`flex gap-2 ${
-            collapsed
-              ? "w-full flex-col items-center"
-              : "items-start justify-between"
-          }`}
+        <aside
+          className={`app-sidebar sticky top-0 hidden h-screen shrink-0 flex-col border-r border-[var(--border)] bg-[var(--surface)]/70 py-6 backdrop-blur transition-[width] duration-200 ease-out md:flex ${
+            collapsed ? "relative w-[72px] px-2" : "w-56 px-4"
+          } ${ready ? "" : "opacity-0"}`}
         >
-          {!collapsed ? (
-            <Link
-              href="/dashboard"
-              className="min-w-0 px-2 text-lg leading-tight"
-            >
-              <GhostWriterLogo markSize={26} className="text-lg" />
-            </Link>
-          ) : (
-            <Link
-              href="/dashboard"
-              aria-label="Ghost Writer"
-              className="flex items-center justify-center"
-            >
-              <GhostWriterLogo markOnly markSize={28} />
-            </Link>
-          )}
-          {!collapsed ? (
+          <div
+            className={`flex gap-2 ${
+              collapsed
+                ? "w-full flex-col items-center"
+                : "items-start justify-between"
+            }`}
+          >
+            {!collapsed ? (
+              <Link
+                href="/dashboard"
+                className="min-w-0 px-2 text-lg leading-tight"
+              >
+                <GhostWriterLogo markSize={26} className="text-lg" />
+              </Link>
+            ) : (
+              <Link
+                href="/dashboard"
+                aria-label="Ghost Writer"
+                className="flex items-center justify-center"
+              >
+                <GhostWriterLogo markOnly markSize={28} />
+              </Link>
+            )}
+            {!collapsed ? (
+              <button
+                type="button"
+                onClick={toggle}
+                aria-label="Collapse sidebar"
+                aria-expanded
+                className="rounded-xl p-2 text-[var(--muted)] transition hover:bg-[var(--surface-soft)] hover:text-[var(--ink)]"
+                title="Collapse"
+              >
+                <CollapseIcon collapsed={false} />
+              </button>
+            ) : null}
+          </div>
+
+          {collapsed ? (
             <button
               type="button"
               onClick={toggle}
-              aria-label="Collapse sidebar"
-              aria-expanded
-              className="rounded-xl p-2 text-[var(--muted)] transition hover:bg-[var(--surface-soft)] hover:text-[var(--ink)]"
-              title="Collapse"
+              aria-label="Expand sidebar"
+              aria-expanded={false}
+              className="absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 rounded-xl p-2 text-[var(--muted)] transition hover:bg-[var(--surface-soft)] hover:text-[var(--ink)]"
+              title="Expand"
             >
-              <CollapseIcon collapsed={false} />
+              <CollapseIcon collapsed />
             </button>
           ) : null}
-        </div>
 
-        {collapsed ? (
-          <button
-            type="button"
-            onClick={toggle}
-            aria-label="Expand sidebar"
-            aria-expanded={false}
-            className="absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 rounded-xl p-2 text-[var(--muted)] transition hover:bg-[var(--surface-soft)] hover:text-[var(--ink)]"
-            title="Expand"
+          <nav
+            className={`app-sidebar-nav mt-10 flex flex-1 flex-col gap-1 ${collapsed ? "items-center" : ""}`}
           >
-            <CollapseIcon collapsed />
-          </button>
-        ) : null}
-
-        <nav
-          className={`app-sidebar-nav mt-10 flex flex-1 flex-col gap-1 ${collapsed ? "items-center" : ""}`}
-        >
-          <NavLink
-            href="/dashboard"
-            label="Today"
-            collapsed={collapsed}
-            active={todayActive}
-            icon="today"
-          />
-          <NavLink
-            href="/blog"
-            label="Blog"
-            collapsed={collapsed}
-            active={blogActive}
-            icon="blog"
-          />
-          <NavLink
-            href="/settings"
-            label="Settings"
-            collapsed={collapsed}
-            active={settingsActive}
-            icon="settings"
-          />
-        </nav>
-
-        <div
-          className={`app-sidebar-footer space-y-3 ${collapsed ? "flex flex-col items-center" : "px-2"}`}
-        >
-          {showAddPanel ? (
-            <div className="relative" ref={sidebarAddRef}>
-              <button
-                type="button"
-                onClick={() => setAddOpen((v) => !v)}
-                title="Add panel"
-                aria-label="Add panel"
-                className={`text-sm text-[var(--muted)] transition hover:text-[var(--ink)] ${
-                  collapsed
-                    ? "flex h-10 w-10 items-center justify-center rounded-xl hover:bg-[var(--surface-soft)]"
-                    : "w-full rounded-xl px-3 py-2 text-left hover:bg-[var(--surface-soft)]"
-                }`}
-              >
-                {collapsed ? <PlusIcon /> : "Add panel"}
-              </button>
-              {addOpen ? (
-                <div className="absolute bottom-full left-0 z-30 mb-2">
-                  <AddPanelMenu
-                    onSelect={(type) => {
-                      addPanel(type);
-                      setAddOpen(false);
-                    }}
-                    onClose={() => setAddOpen(false)}
-                  />
-                </div>
-              ) : null}
-            </div>
-          ) : null}
-          {!collapsed ? (
-            <>
-              <p className="truncate text-xs text-[var(--muted)]" title={email}>
-                {email}
-              </p>
-              <SignOutButton />
-            </>
-          ) : (
-            <SignOutButton compact />
-          )}
-        </div>
-      </aside>
-
-      <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex items-center justify-between border-b border-[var(--border)] px-4 py-3 md:hidden">
-          <Link href="/dashboard" className="text-lg">
-            <GhostWriterLogo markSize={24} className="text-lg" />
-          </Link>
-          <button
-            type="button"
-            onClick={() => setMobileOpen(true)}
-            className="rounded-xl p-2 text-[var(--ink)] hover:bg-[var(--surface-soft)]"
-            aria-label="Open menu"
-            aria-expanded={mobileOpen}
-          >
-            <HamburgerIcon />
-          </button>
-        </header>
-
-        {mobileOpen ? (
-          <div className="fixed inset-0 z-40 md:hidden">
-            <button
-              type="button"
-              className="absolute inset-0 bg-[var(--ink)]/30"
-              aria-label="Close menu"
-              onClick={() => setMobileOpen(false)}
+            <NavLink
+              href="/dashboard"
+              label="Today"
+              collapsed={collapsed}
+              active={todayActive}
+              icon="today"
             />
-            <div className="absolute inset-y-0 right-0 flex w-[min(20rem,88vw)] flex-col border-l border-[var(--border)] bg-[var(--surface)] shadow-xl">
-              <div className="flex items-center justify-between border-b border-[var(--border)] px-4 py-3">
-                <p className="font-[family-name:var(--font-display)] text-lg">
-                  Menu
-                </p>
+            <NavLink
+              href="/blog"
+              label="Blog"
+              collapsed={collapsed}
+              active={blogActive}
+              icon="blog"
+            />
+            <NavLink
+              href="/settings"
+              label="Settings"
+              collapsed={collapsed}
+              active={settingsActive}
+              icon="settings"
+            />
+          </nav>
+
+          <div
+            className={`app-sidebar-footer space-y-3 ${collapsed ? "flex flex-col items-center" : "px-2"}`}
+          >
+            {showAddPanel ? (
+              <div className="relative" ref={sidebarAddRef}>
                 <button
                   type="button"
-                  onClick={() => setMobileOpen(false)}
-                  className="rounded-xl px-2 py-1 text-sm text-[var(--muted)] hover:text-[var(--ink)]"
+                  onClick={() => setAddOpen((v) => !v)}
+                  title="Add panel"
+                  aria-label="Add panel"
+                  className={`text-sm text-[var(--muted)] transition hover:text-[var(--ink)] ${
+                    collapsed
+                      ? "flex h-10 w-10 items-center justify-center rounded-xl hover:bg-[var(--surface-soft)]"
+                      : "w-full rounded-xl px-3 py-2 text-left hover:bg-[var(--surface-soft)]"
+                  }`}
                 >
-                  Close
+                  {collapsed ? <PlusIcon /> : "Add panel"}
                 </button>
+                {addOpen ? (
+                  <div className="absolute bottom-full left-0 z-30 mb-2">
+                    <AddPanelMenu
+                      onSelect={(type) => {
+                        addPanel(type);
+                        setAddOpen(false);
+                      }}
+                      onClose={() => setAddOpen(false)}
+                    />
+                  </div>
+                ) : null}
               </div>
-              <nav className="flex flex-1 flex-col gap-1 p-3">
-                <MobileNavLink
-                  href="/dashboard"
-                  label="Today"
-                  active={todayActive}
-                  onNavigate={() => setMobileOpen(false)}
+            ) : null}
+            {!collapsed ? (
+              <>
+                <p
+                  className="truncate text-xs text-[var(--muted)]"
+                  title={email}
+                >
+                  {email}
+                </p>
+                <SignOutButton />
+              </>
+            ) : (
+              <SignOutButton compact />
+            )}
+          </div>
+        </aside>
+
+        <div className="flex min-w-0 flex-1 flex-col">
+          <header className="app-mobile-header flex items-center justify-between border-b border-[var(--border)] px-4 py-3 md:hidden">
+            <Link href="/dashboard" className="text-lg">
+              <GhostWriterLogo markSize={24} className="text-lg" />
+            </Link>
+            <button
+              type="button"
+              onClick={() => setMobileOpen(true)}
+              className="rounded-xl p-2 text-[var(--ink)] hover:bg-[var(--surface-soft)]"
+              aria-label="Open menu"
+              aria-expanded={mobileOpen}
+            >
+              <HamburgerIcon />
+            </button>
+          </header>
+
+          {mobileOpen ? (
+            retroEnabled ? (
+              <div className="fixed inset-0 z-40 flex items-center justify-center p-4 md:hidden">
+                <button
+                  type="button"
+                  className="absolute inset-0 bg-black/35"
+                  aria-label="Close menu"
+                  onClick={() => {
+                    setMobileOpen(false);
+                    setAddOpen(false);
+                  }}
                 />
-                <MobileNavLink
-                  href="/blog"
-                  label="Blog"
-                  active={blogActive}
-                  onNavigate={() => setMobileOpen(false)}
+                <div
+                  role="dialog"
+                  aria-modal="true"
+                  aria-label="Navigation"
+                  className="panel-card mobile-finder-window relative z-10 flex max-h-[min(80vh,28rem)] w-full max-w-sm flex-col overflow-hidden"
+                >
+                  <div className="panel-title-bar flex items-center gap-2 px-2 py-1">
+                    <div className="panel-title-stripes" aria-hidden />
+                    <button
+                      type="button"
+                      className="panel-close-box panel-chrome-btn shrink-0"
+                      aria-label="Close menu"
+                      onClick={() => {
+                        setMobileOpen(false);
+                        setAddOpen(false);
+                      }}
+                    >
+                      <span className="panel-close-box-label">Close</span>
+                    </button>
+                    <h2 className="panel-title-label relative z-[1] text-sm font-semibold tracking-tight">
+                      Ghost Writer
+                    </h2>
+                  </div>
+                  <div className="panel-body flex min-h-0 flex-1 flex-col overflow-auto bg-[var(--surface)]">
+                    <MobileFinderNav
+                      todayActive={todayActive}
+                      blogActive={blogActive}
+                      settingsActive={settingsActive}
+                      showAddPanel={showAddPanel}
+                      addOpen={addOpen}
+                      onToggleAdd={() => setAddOpen((v) => !v)}
+                      onAddPanel={(type) => {
+                        addPanel(type);
+                        setAddOpen(false);
+                        setMobileOpen(false);
+                      }}
+                      onCloseAdd={() => setAddOpen(false)}
+                      onNavigate={() => setMobileOpen(false)}
+                      email={email}
+                    />
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="fixed inset-0 z-40 md:hidden">
+                <button
+                  type="button"
+                  className="absolute inset-0 bg-[var(--ink)]/30"
+                  aria-label="Close menu"
+                  onClick={() => setMobileOpen(false)}
                 />
-                <MobileNavLink
-                  href="/settings"
-                  label="Settings"
-                  active={settingsActive}
-                  onNavigate={() => setMobileOpen(false)}
-                />
-                {showAddPanel ? (
-                  <div className="mt-4 border-t border-[var(--border)] pt-4">
-                    <p className="mb-2 px-3 text-xs font-medium uppercase tracking-wide text-[var(--muted)]">
-                      Dashboard
+                <div className="absolute inset-y-0 right-0 flex w-[min(20rem,88vw)] flex-col border-l border-[var(--border)] bg-[var(--surface)] shadow-xl">
+                  <div className="flex items-center justify-between border-b border-[var(--border)] px-4 py-3">
+                    <p className="font-[family-name:var(--font-display)] text-lg">
+                      Menu
                     </p>
                     <button
                       type="button"
-                      onClick={() => setAddOpen((v) => !v)}
-                      className="flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-sm text-[var(--muted)] hover:bg-[var(--surface-soft)] hover:text-[var(--ink)]"
+                      onClick={() => setMobileOpen(false)}
+                      className="rounded-xl px-2 py-1 text-sm text-[var(--muted)] hover:text-[var(--ink)]"
                     >
-                      Add panel
-                      <span className="text-xs">{addOpen ? "−" : "+"}</span>
+                      Close
                     </button>
-                    {addOpen ? (
-                      <div className="mt-2 px-1">
-                        <AddPanelMenu
-                          onSelect={(type) => {
-                            addPanel(type);
-                            setAddOpen(false);
-                            setMobileOpen(false);
-                          }}
-                        />
+                  </div>
+                  <nav className="flex flex-1 flex-col gap-1 p-3">
+                    <MobileNavLink
+                      href="/dashboard"
+                      label="Today"
+                      active={todayActive}
+                      onNavigate={() => setMobileOpen(false)}
+                    />
+                    <MobileNavLink
+                      href="/blog"
+                      label="Blog"
+                      active={blogActive}
+                      onNavigate={() => setMobileOpen(false)}
+                    />
+                    <MobileNavLink
+                      href="/settings"
+                      label="Settings"
+                      active={settingsActive}
+                      onNavigate={() => setMobileOpen(false)}
+                    />
+                    {showAddPanel ? (
+                      <div className="mt-4 border-t border-[var(--border)] pt-4">
+                        <p className="mb-2 px-3 text-xs font-medium uppercase tracking-wide text-[var(--muted)]">
+                          Dashboard
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => setAddOpen((v) => !v)}
+                          className="flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-sm text-[var(--muted)] hover:bg-[var(--surface-soft)] hover:text-[var(--ink)]"
+                        >
+                          Add panel
+                          <span className="text-xs">{addOpen ? "−" : "+"}</span>
+                        </button>
+                        {addOpen ? (
+                          <div className="mt-2 px-1">
+                            <AddPanelMenu
+                              onSelect={(type) => {
+                                addPanel(type);
+                                setAddOpen(false);
+                                setMobileOpen(false);
+                              }}
+                            />
+                          </div>
+                        ) : null}
                       </div>
                     ) : null}
+                  </nav>
+                  <div className="space-y-3 border-t border-[var(--border)] px-4 py-4">
+                    {email ? (
+                      <p
+                        className="truncate text-xs text-[var(--muted)]"
+                        title={email}
+                      >
+                        {email}
+                      </p>
+                    ) : null}
+                    <SignOutButton />
                   </div>
-                ) : null}
-              </nav>
-              <div className="space-y-3 border-t border-[var(--border)] px-4 py-4">
-                {email ? (
-                  <p className="truncate text-xs text-[var(--muted)]" title={email}>
-                    {email}
-                  </p>
-                ) : null}
-                <SignOutButton />
+                </div>
               </div>
-            </div>
-          </div>
-        ) : null}
+            )
+          ) : null}
 
-        <div className="flex-1">{children}</div>
-      </div>
+          <div className="flex-1">{children}</div>
+        </div>
       </div>
     </div>
   );

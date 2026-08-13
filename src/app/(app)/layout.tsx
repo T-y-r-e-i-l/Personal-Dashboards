@@ -32,7 +32,9 @@ export default async function AppLayout({
         }}
       />
       <RetroThemeProvider enabled={retroEnabled} />
-      <AppShell email={user.email}>{children}</AppShell>
+      <AppShell email={user.email} retroEnabled={retroEnabled}>
+        {children}
+      </AppShell>
     </DashboardActionsProvider>
   );
 }
