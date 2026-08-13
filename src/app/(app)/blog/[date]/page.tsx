@@ -7,6 +7,11 @@ import {
 } from "@/lib/blog/dayRange";
 import type { NoteSnapshot } from "@/lib/blog/types";
 import { DayDashboard } from "@/components/blog/DayDashboard";
+import type { DashboardPanel } from "@/lib/database.types";
+import {
+  fetchLayoutSnapshot,
+  hydratePanelsFromSnapshot,
+} from "@/lib/dashboard/layoutSnapshot";
 
 export default async function BlogPostPage({
   params,
@@ -52,7 +57,7 @@ export default async function BlogPostPage({
   const defaultDashboard =
     dashboards?.find((d) => d.is_default) ?? dashboards?.[0] ?? null;
 
-  const [{ data: panels }, { data: captures }] = await Promise.all([
+  const [{ data: livePanels }, { data: captures }] = await Promise.all([
     defaultDashboard
       ? supabase
           .from("dashboard_panels")
@@ -60,7 +65,7 @@ export default async function BlogPostPage({
           .eq("dashboard_id", defaultDashboard.id)
           .order("y", { ascending: true })
           .order("x", { ascending: true })
-      : Promise.resolve({ data: [] as never[] }),
+      : Promise.resolve({ data: [] as DashboardPanel[] }),
     supabase
       .from("captures")
       .select("id, content, visibility, created_at")
@@ -69,6 +74,14 @@ export default async function BlogPostPage({
       .lt("created_at", range.endUtc)
       .order("created_at", { ascending: true }),
   ]);
+
+  let panels: DashboardPanel[] = livePanels ?? [];
+  if (date !== todayDate && defaultDashboard) {
+    const snapshot = await fetchLayoutSnapshot(supabase, user.id, date);
+    if (snapshot) {
+      panels = hydratePanelsFromSnapshot(snapshot);
+    }
+  }
 
   const notes: NoteSnapshot[] = (captures ?? []).map((row) => ({
     id: row.id,
@@ -85,7 +98,7 @@ export default async function BlogPostPage({
       timeZone={timeZone}
       location={location}
       post={post}
-      panels={panels ?? []}
+      panels={panels}
       notes={notes}
     />
   );

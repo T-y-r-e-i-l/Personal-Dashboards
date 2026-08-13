@@ -13,6 +13,11 @@ import { DashboardHeaderMeta } from "@/components/dashboard/DashboardHeaderMeta"
 import { useDashboardActions } from "@/components/dashboard/DashboardActionsContext";
 import { DailySelfieButton } from "@/components/selfie/DailySelfieButton";
 import { useToast } from "@/components/ui/Toast";
+import { getDayRange } from "@/lib/blog/dayRange";
+import {
+  ensureLayoutSnapshot,
+  upsertLayoutSnapshot,
+} from "@/lib/dashboard/layoutSnapshot";
 
 export function DashboardHome({
   userId,
@@ -36,6 +41,31 @@ export function DashboardHome({
       null,
   );
   const [panels, setPanels] = useState(initialPanels);
+  const timeZone = initialProfile?.timezone ?? "America/Los_Angeles";
+  const defaultDashboardId =
+    dashboards.find((d) => d.is_default)?.id ?? dashboards[0]?.id ?? null;
+
+  const snapshotToday = useCallback(
+    async (
+      nextPanels: DashboardPanel[],
+      mode: "ensure" | "upsert" = "upsert",
+    ) => {
+      if (!defaultDashboardId) return;
+      const snapshotDate = getDayRange(timeZone).postDate;
+      const opts = {
+        userId,
+        dashboardId: defaultDashboardId,
+        snapshotDate,
+        panels: nextPanels,
+      };
+      if (mode === "ensure") {
+        await ensureLayoutSnapshot(supabase, opts);
+      } else {
+        await upsertLayoutSnapshot(supabase, opts);
+      }
+    },
+    [defaultDashboardId, supabase, timeZone, userId],
+  );
 
   useEffect(() => {
     if (!initialProfile?.onboarding_completed && dashboards.length === 0) {
@@ -51,19 +81,22 @@ export function DashboardHome({
         .select("*")
         .eq("dashboard_id", activeId)
         .order("y", { ascending: true });
-      setPanels(data ?? []);
+      const next = data ?? [];
+      setPanels(next);
+      if (activeId === defaultDashboardId) {
+        await snapshotToday(next, "ensure");
+      }
     })();
-  }, [activeId, supabase]);
+  }, [activeId, defaultDashboardId, snapshotToday, supabase]);
 
   const persistLayout = useCallback(
     async (layout: Layout) => {
-      setPanels((prev) =>
-        prev.map((p) => {
-          const item = layout.find((l) => l.i === p.id);
-          if (!item) return p;
-          return { ...p, x: item.x, y: item.y, w: item.w, h: item.h };
-        }),
-      );
+      const nextPanels = panels.map((p) => {
+        const item = layout.find((l) => l.i === p.id);
+        if (!item) return p;
+        return { ...p, x: item.x, y: item.y, w: item.w, h: item.h };
+      });
+      setPanels(nextPanels);
 
       await Promise.all(
         layout.map((item) =>
@@ -79,8 +112,11 @@ export function DashboardHome({
             .eq("id", item.i),
         ),
       );
+      if (activeId === defaultDashboardId) {
+        await snapshotToday(nextPanels, "upsert");
+      }
     },
-    [supabase],
+    [activeId, defaultDashboardId, panels, snapshotToday, supabase],
   );
 
   const debouncedPersist = useMemo(() => {
@@ -117,10 +153,22 @@ export function DashboardHome({
         showToast(error?.message ?? "Could not add panel");
         return;
       }
-      setPanels((prev) => [...prev, data]);
+      const nextPanels = [...panels, data];
+      setPanels(nextPanels);
+      if (activeId === defaultDashboardId) {
+        await snapshotToday(nextPanels, "upsert");
+      }
       showToast(`${meta.label} added`);
     },
-    [activeId, panels, showToast, supabase, userId],
+    [
+      activeId,
+      defaultDashboardId,
+      panels,
+      showToast,
+      snapshotToday,
+      supabase,
+      userId,
+    ],
   );
 
   useEffect(() => {
@@ -137,7 +185,11 @@ export function DashboardHome({
       showToast(error.message);
       return;
     }
-    setPanels((prev) => prev.filter((p) => p.id !== panelId));
+    const nextPanels = panels.filter((p) => p.id !== panelId);
+    setPanels(nextPanels);
+    if (activeId === defaultDashboardId) {
+      await snapshotToday(nextPanels, "upsert");
+    }
   }
 
   async function updateConfig(panelId: string, config: PanelConfig) {
@@ -149,9 +201,13 @@ export function DashboardHome({
       showToast(error.message);
       return;
     }
-    setPanels((prev) =>
-      prev.map((p) => (p.id === panelId ? { ...p, config } : p)),
+    const nextPanels = panels.map((p) =>
+      p.id === panelId ? { ...p, config } : p,
     );
+    setPanels(nextPanels);
+    if (activeId === defaultDashboardId) {
+      await snapshotToday(nextPanels, "upsert");
+    }
     showToast("Panel updated");
   }
 
@@ -167,11 +223,10 @@ export function DashboardHome({
     }
 
     const previous = current;
-    setPanels((prev) =>
-      prev.map((p) =>
-        p.id === panelId ? { ...p, panel_type: type, config: {} } : p,
-      ),
+    const nextPanels = panels.map((p) =>
+      p.id === panelId ? { ...p, panel_type: type, config: {} } : p,
     );
+    setPanels(nextPanels);
 
     const { data, error } = await supabase
       .from("dashboard_panels")
@@ -192,6 +247,9 @@ export function DashboardHome({
       return;
     }
 
+    if (activeId === defaultDashboardId) {
+      await snapshotToday(nextPanels, "upsert");
+    }
     showToast(`Swapped to ${PANEL_META[type].label}`);
   }
 

@@ -6,6 +6,7 @@ import { getDayRange, getDigestNow } from "@/lib/blog/dayRange";
 import type { DayContext } from "@/lib/blog/types";
 import type { BlogPost } from "@/lib/database.types";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { ensureLayoutSnapshot } from "@/lib/dashboard/layoutSnapshot";
 
 const summarySchema = z.object({
   private_summary: z
@@ -110,6 +111,8 @@ export async function generateDailyBlogPost(
     now,
   );
 
+  await ensureDigestLayoutSnapshot(supabase, userId, range.postDate);
+
   const existing = await supabase
     .from("blog_posts")
     .select("id")
@@ -162,6 +165,36 @@ export async function generateDailyBlogPost(
   }
 
   return { created: true, post: insert.data as BlogPost };
+}
+
+async function ensureDigestLayoutSnapshot(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: SupabaseClient<any>,
+  userId: string,
+  snapshotDate: string,
+) {
+  const { data: dashboards } = await supabase
+    .from("dashboards")
+    .select("id, is_default")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: true });
+  const defaultDashboard =
+    dashboards?.find((d) => d.is_default) ?? dashboards?.[0] ?? null;
+  if (!defaultDashboard) return;
+
+  const { data: panels } = await supabase
+    .from("dashboard_panels")
+    .select("panel_type, config, x, y, w, h")
+    .eq("dashboard_id", defaultDashboard.id)
+    .order("y", { ascending: true })
+    .order("x", { ascending: true });
+
+  await ensureLayoutSnapshot(supabase, {
+    userId,
+    dashboardId: defaultDashboard.id,
+    snapshotDate,
+    panels: panels ?? [],
+  });
 }
 
 export async function runDailyBlogCron(now = new Date()) {

@@ -99,6 +99,29 @@ export type Database = {
         };
         Update: Partial<Database["public"]["Tables"]["dashboard_panels"]["Insert"]>;
       };
+      dashboard_layout_snapshots: {
+        Row: {
+          id: string;
+          user_id: string;
+          dashboard_id: string;
+          snapshot_date: string;
+          panels: Json;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          dashboard_id: string;
+          snapshot_date: string;
+          panels?: Json;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<
+          Database["public"]["Tables"]["dashboard_layout_snapshots"]["Insert"]
+        >;
+      };
       captures: {
         Row: {
           id: string;
@@ -406,6 +429,8 @@ export type Profile = Database["public"]["Tables"]["profiles"]["Row"];
 export type Dashboard = Database["public"]["Tables"]["dashboards"]["Row"];
 export type DashboardPanel =
   Database["public"]["Tables"]["dashboard_panels"]["Row"];
+export type DashboardLayoutSnapshot =
+  Database["public"]["Tables"]["dashboard_layout_snapshots"]["Row"];
 export type Capture = Database["public"]["Tables"]["captures"]["Row"];
 export type BlogPost = Database["public"]["Tables"]["blog_posts"]["Row"];
 export type Task = Database["public"]["Tables"]["tasks"]["Row"];
