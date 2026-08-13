@@ -605,11 +605,16 @@ body {
 }
 
 [data-theme="retro"] .app-mobile-header {
-  display: flex !important;
   background: var(--mac-platinum) !important;
   border-bottom: 1px solid #000 !important;
   padding-top: 0.5rem;
   padding-bottom: 0.5rem;
+}
+
+@media (min-width: 768px) {
+  [data-theme="retro"] .app-mobile-header {
+    display: none !important;
+  }
 }
 
 [data-theme="retro"] .app-mobile-header button {
