@@ -130,7 +130,7 @@ export function SleepSettingsForm({
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({
-        queryKey: ["sleep_logs", userId, sleepDate],
+        queryKey: ["sleep_logs", userId],
       });
     },
   });

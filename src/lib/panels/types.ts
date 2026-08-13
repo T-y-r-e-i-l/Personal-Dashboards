@@ -57,8 +57,8 @@ export const PANEL_META: Record<
   sleep: {
     label: "Sleep",
     defaultW: 3,
-    defaultH: 3,
-    description: "Last night's sleep start, end, duration, score, and rating",
+    defaultH: 4,
+    description: "Last night's sleep plus 7-day averages and trends",
   },
   reflection: {
     label: "Reflection",
