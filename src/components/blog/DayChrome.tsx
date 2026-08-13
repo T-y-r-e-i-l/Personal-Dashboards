@@ -8,6 +8,7 @@ import {
   shiftPostDate,
 } from "@/lib/blog/dayRange";
 import { PublishToggle } from "@/components/blog/PublishToggle";
+import { RegenerateDayButton } from "@/components/blog/RegenerateDayButton";
 
 export function DayChrome({
   date,
@@ -69,9 +70,12 @@ export function DayChrome({
           ) : null}
         </div>
       </div>
-      {postId ? (
-        <PublishToggle postId={postId} initialPublic={Boolean(isPublic)} />
-      ) : null}
+      <div className="flex flex-wrap items-center gap-2">
+        <RegenerateDayButton date={date} hasPost={Boolean(postId)} />
+        {postId ? (
+          <PublishToggle postId={postId} initialPublic={Boolean(isPublic)} />
+        ) : null}
+      </div>
     </div>
   );
 }

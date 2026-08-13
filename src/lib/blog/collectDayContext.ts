@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { getDayRange } from "@/lib/blog/dayRange";
+import { getDayRange, getDayRangeForDate } from "@/lib/blog/dayRange";
 import { fetchWeatherSnapshot } from "@/lib/blog/weatherSnapshot";
 import type { DayContext, NoteSnapshot } from "@/lib/blog/types";
 import { listGoogleEvents } from "@/lib/google/calendar";
@@ -10,9 +10,11 @@ export async function collectDayContext(
   userId: string,
   timezone: string,
   location: string | null,
-  now = new Date(),
+  options: { now?: Date; postDate?: string } = {},
 ): Promise<{ range: ReturnType<typeof getDayRange>; context: DayContext }> {
-  const range = getDayRange(timezone, now);
+  const range = options.postDate
+    ? getDayRangeForDate(timezone, options.postDate)
+    : getDayRange(timezone, options.now ?? new Date());
 
   const [
     capturesRes,
