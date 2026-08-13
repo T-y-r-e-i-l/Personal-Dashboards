@@ -31,7 +31,7 @@ export function MobileFinderNav({
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <nav
-        className="mobile-finder-grid grid grid-cols-3 gap-x-2 gap-y-4 p-4"
+        className="mobile-finder-grid grid grid-cols-2 gap-2 p-4"
         aria-label="Main"
       >
         <FinderIconLink
@@ -52,15 +52,15 @@ export function MobileFinderNav({
           href="/settings"
           label="Settings"
           active={settingsActive}
-          kind="document"
+          kind="gear"
           onNavigate={onNavigate}
         />
         {showAddPanel ? (
-          <div className="relative flex flex-col items-center gap-1">
+          <div className="mobile-finder-cell relative flex items-center justify-center">
             <button
               type="button"
               onClick={onToggleAdd}
-              className={`mobile-finder-icon flex flex-col items-center gap-1 ${
+              className={`mobile-finder-icon flex flex-col items-center justify-center gap-1 ${
                 addOpen ? "is-active" : ""
               }`}
               aria-expanded={addOpen}
@@ -102,23 +102,31 @@ function FinderIconLink({
   href: string;
   label: string;
   active: boolean;
-  kind: "document" | "folder";
+  kind: "document" | "folder" | "gear";
   onNavigate: () => void;
 }) {
   return (
-    <Link
-      href={href}
-      onClick={onNavigate}
-      className={`mobile-finder-icon flex flex-col items-center gap-1 ${
-        active ? "is-active" : ""
-      }`}
-      aria-current={active ? "page" : undefined}
-    >
-      {kind === "folder" ? <MacFolderIcon /> : <MacDocumentIcon />}
-      <span className="mobile-finder-label text-center text-[11px] leading-tight">
-        {label}
-      </span>
-    </Link>
+    <div className="mobile-finder-cell flex items-center justify-center">
+      <Link
+        href={href}
+        onClick={onNavigate}
+        className={`mobile-finder-icon flex flex-col items-center justify-center gap-1 ${
+          active ? "is-active" : ""
+        }`}
+        aria-current={active ? "page" : undefined}
+      >
+        {kind === "folder" ? (
+          <MacFolderIcon />
+        ) : kind === "gear" ? (
+          <MacGearIcon />
+        ) : (
+          <MacDocumentIcon />
+        )}
+        <span className="mobile-finder-label text-center text-[11px] leading-tight">
+          {label}
+        </span>
+      </Link>
+    </div>
   );
 }
 
@@ -131,7 +139,15 @@ function MacDocumentIcon() {
       aria-hidden
       className="mobile-finder-glyph"
     >
-      <rect x="6" y="3" width="16" height="22" fill="#fff" stroke="#000" strokeWidth="1.5" />
+      <rect
+        x="6"
+        y="3"
+        width="16"
+        height="22"
+        fill="#fff"
+        stroke="#000"
+        strokeWidth="1.5"
+      />
       <path d="M18 3v6h6" fill="#ddd" stroke="#000" strokeWidth="1.5" />
       <path d="M18 3l6 6" fill="none" stroke="#000" strokeWidth="1.5" />
       <path
@@ -166,6 +182,27 @@ function MacFolderIcon() {
         stroke="#000"
         strokeWidth="1.5"
       />
+    </svg>
+  );
+}
+
+function MacGearIcon() {
+  return (
+    <svg
+      width="32"
+      height="32"
+      viewBox="0 0 32 32"
+      aria-hidden
+      className="mobile-finder-glyph"
+    >
+      <circle cx="16" cy="16" r="4.5" fill="#ddd" stroke="#000" strokeWidth="1.5" />
+      <path
+        d="M16 5.5v3.2M16 23.3v3.2M5.5 16h3.2M23.3 16h3.2M8.2 8.2l2.3 2.3M21.5 21.5l2.3 2.3M8.2 23.8l2.3-2.3M21.5 10.5l2.3-2.3"
+        stroke="#000"
+        strokeWidth="2"
+        strokeLinecap="square"
+      />
+      <circle cx="16" cy="16" r="2" fill="#fff" stroke="#000" strokeWidth="1.2" />
     </svg>
   );
 }
