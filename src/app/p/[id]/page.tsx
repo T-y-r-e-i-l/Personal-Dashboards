@@ -3,6 +3,7 @@ import { format } from "date-fns";
 import { createClient } from "@/lib/supabase/server";
 import { formatPostDateTitle } from "@/lib/blog/dayRange";
 import { parseNotesSnapshot } from "@/lib/blog/notesSnapshot";
+import { parseAiSummary } from "@/lib/blog/parseDayContext";
 import { GhostWriterLogo } from "@/components/brand/GhostWriterLogo";
 import { MarkdownContent } from "@/components/markdown/MarkdownContent";
 import { NoteWindow } from "@/components/capture/NoteWindow";
@@ -22,7 +23,7 @@ export default async function PublicBlogPostPage({
   const { data: post, error } = await supabase
     .from("blog_posts")
     .select(
-      "id, post_date, public_summary, notes_snapshot, is_public, generated_at",
+      "id, post_date, public_summary, notes_snapshot, day_context, is_public, generated_at",
     )
     .eq("id", id)
     .eq("is_public", true)
@@ -33,6 +34,7 @@ export default async function PublicBlogPostPage({
   const notes = parseNotesSnapshot(post.notes_snapshot).filter(
     (n) => n.visibility === "public",
   );
+  const aiSummary = parseAiSummary(post.day_context);
 
   return (
     <main className="mx-auto min-h-screen w-full max-w-2xl px-6 py-14">
@@ -45,10 +47,22 @@ export default async function PublicBlogPostPage({
       </p>
 
       <section className="mt-10">
+        <h2 className="mb-3 text-sm font-semibold tracking-tight">Day log</h2>
         <div className="markdown-body">
           <MarkdownContent content={post.public_summary} />
         </div>
       </section>
+
+      {aiSummary ? (
+        <section className="mt-10">
+          <h2 className="mb-3 text-sm font-semibold tracking-tight">
+            Reflection
+          </h2>
+          <div className="markdown-body">
+            <MarkdownContent content={aiSummary.public_summary} />
+          </div>
+        </section>
+      ) : null}
 
       {notes.length > 0 ? (
         <section className="mt-12 border-t border-[var(--border)] pt-8">

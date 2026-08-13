@@ -5,6 +5,7 @@ import {
   getDayRangeForDate,
   isValidPostDate,
 } from "@/lib/blog/dayRange";
+import { ensureStaticDayPost } from "@/lib/blog/generatePost";
 import type { NoteSnapshot } from "@/lib/blog/types";
 import { DayDashboard } from "@/components/blog/DayDashboard";
 import type { DashboardPanel } from "@/lib/database.types";
@@ -27,32 +28,39 @@ export default async function BlogPostPage({
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const [{ data: profile }, { data: post }, { data: dashboards }] =
-    await Promise.all([
-      supabase
-        .from("profiles")
-        .select("timezone, location")
-        .eq("id", user.id)
-        .maybeSingle(),
-      supabase
-        .from("blog_posts")
-        .select(
-          "id, private_summary, is_public, generated_at, model, day_context",
-        )
-        .eq("user_id", user.id)
-        .eq("post_date", date)
-        .maybeSingle(),
-      supabase
-        .from("dashboards")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: true }),
-    ]);
+  const [{ data: profile }, { data: dashboards }] = await Promise.all([
+    supabase
+      .from("profiles")
+      .select("timezone, location")
+      .eq("id", user.id)
+      .maybeSingle(),
+    supabase
+      .from("dashboards")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: true }),
+  ]);
 
   const timeZone = profile?.timezone || "UTC";
   const location = profile?.location ?? null;
   const todayDate = getDayRange(timeZone).postDate;
   const range = getDayRangeForDate(timeZone, date);
+
+  // Auto-create/refresh factual day post whenever the day has activity.
+  try {
+    await ensureStaticDayPost(supabase, user.id, timeZone, location, {
+      postDate: date,
+    });
+  } catch (err) {
+    console.error("[blog/date] ensureStaticDayPost", user.id, date, err);
+  }
+
+  const { data: post } = await supabase
+    .from("blog_posts")
+    .select("id, private_summary, is_public, generated_at, model, day_context")
+    .eq("user_id", user.id)
+    .eq("post_date", date)
+    .maybeSingle();
 
   const defaultDashboard =
     dashboards?.find((d) => d.is_default) ?? dashboards?.[0] ?? null;

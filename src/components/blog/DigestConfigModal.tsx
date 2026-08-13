@@ -19,11 +19,11 @@ type SourcesResponse = DigestSourcesInventory & {
 
 export function DigestConfigModal({
   date,
-  hasPost,
+  hasAiSummary,
   onClose,
 }: {
   date: string;
-  hasPost: boolean;
+  hasAiSummary: boolean;
   onClose: () => void;
 }) {
   const router = useRouter();
@@ -159,27 +159,22 @@ export function DigestConfigModal({
       });
       const data = (await res.json().catch(() => ({}))) as {
         ok?: boolean;
-        created?: boolean;
         updated?: boolean;
         error?: string;
       };
 
       if (!res.ok || !data.ok) {
-        showToast(data.error || "Could not generate digest.");
+        showToast(data.error || "Could not write AI summary.");
         return;
       }
 
       showToast(
-        data.updated
-          ? "Digest regenerated"
-          : data.created
-            ? "Digest generated"
-            : "Done",
+        hasAiSummary ? "AI summary regenerated" : "AI summary created",
       );
       onClose();
       router.refresh();
     } catch {
-      showToast("Could not generate digest.");
+      showToast("Could not write AI summary.");
     } finally {
       setSubmitting(false);
     }
@@ -204,11 +199,12 @@ export function DigestConfigModal({
           id="digest-config-title"
           className="font-[family-name:var(--font-display)] text-2xl"
         >
-          Digest sources
+          AI summary sources
         </h2>
         <p className="mt-1 text-sm text-[var(--muted)]">
-          Choose what should inform this day’s digest.
-          {hasPost ? " The existing digest will be replaced." : null}
+          Choose what should inform the AI reflection. The factual day log is
+          saved automatically
+          {hasAiSummary ? "; this will replace the existing AI summary" : ""}.
         </p>
 
         <div className="mt-6 space-y-5">
@@ -361,12 +357,12 @@ export function DigestConfigModal({
             className="rounded-full bg-[var(--ink)] px-4 py-2 text-sm font-medium text-[var(--canvas)] disabled:opacity-50"
           >
             {submitting
-              ? hasPost
+              ? hasAiSummary
                 ? "Regenerating…"
-                : "Generating…"
-              : hasPost
-                ? "Regenerate"
-                : "Generate"}
+                : "Writing…"
+              : hasAiSummary
+                ? "Regenerate AI summary"
+                : "Write AI summary"}
           </button>
         </div>
       </div>

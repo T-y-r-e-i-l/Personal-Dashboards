@@ -4,7 +4,7 @@ import {
   parseDigestSelection,
   selectionHasSignal,
 } from "@/lib/blog/digestSelection";
-import { generateDailyBlogPost } from "@/lib/blog/generatePost";
+import { writeDayAiSummary } from "@/lib/blog/generatePost";
 import { createClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
@@ -63,7 +63,7 @@ export async function POST(request: Request) {
         created: false,
         updated: false,
         reason: "empty_selection",
-        error: "Select at least one note or activity.",
+        error: "Select at least one note or activity for the AI summary.",
       },
       { status: 400 },
     );
@@ -83,12 +83,12 @@ export async function POST(request: Request) {
   const location = profile?.location ?? null;
 
   try {
-    const result = await generateDailyBlogPost(
+    const result = await writeDayAiSummary(
       supabase,
       user.id,
       timezone,
       location,
-      { postDate: date, overwrite: true, selection },
+      { postDate: date, selection },
     );
 
     if (result.reason === "empty_day") {
@@ -114,7 +114,7 @@ export async function POST(request: Request) {
           created: false,
           updated: false,
           reason: result.reason ?? "error",
-          error: result.reason ?? "Could not generate digest.",
+          error: result.reason ?? "Could not write AI summary.",
         },
         { status: 500 },
       );
@@ -129,7 +129,7 @@ export async function POST(request: Request) {
     });
   } catch (err) {
     const message =
-      err instanceof Error ? err.message : "Digest generation failed";
+      err instanceof Error ? err.message : "AI summary generation failed";
     console.error("[blog/regenerate]", user.id, date, message);
     return NextResponse.json({ error: message }, { status: 500 });
   }

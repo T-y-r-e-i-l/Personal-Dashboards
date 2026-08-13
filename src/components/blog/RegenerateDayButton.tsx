@@ -5,10 +5,10 @@ import { DigestConfigModal } from "@/components/blog/DigestConfigModal";
 
 export function RegenerateDayButton({
   date,
-  hasPost,
+  hasAiSummary,
 }: {
   date: string;
-  hasPost: boolean;
+  hasAiSummary: boolean;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -19,12 +19,12 @@ export function RegenerateDayButton({
         onClick={() => setOpen(true)}
         className="rounded-full border border-[var(--border)] px-4 py-2 text-sm font-medium text-[var(--ink)] hover:bg-[var(--surface-soft)]"
       >
-        {hasPost ? "Regenerate" : "Generate digest"}
+        {hasAiSummary ? "Regenerate AI summary" : "AI summary"}
       </button>
       {open ? (
         <DigestConfigModal
           date={date}
-          hasPost={hasPost}
+          hasAiSummary={hasAiSummary}
           onClose={() => setOpen(false)}
         />
       ) : null}

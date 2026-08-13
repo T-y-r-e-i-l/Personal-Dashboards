@@ -2,7 +2,10 @@
 
 import type { DashboardPanel } from "@/lib/database.types";
 import type { NoteSnapshot } from "@/lib/blog/types";
-import { parseDayContextWeather } from "@/lib/blog/parseDayContext";
+import {
+  parseAiSummary,
+  parseDayContextWeather,
+} from "@/lib/blog/parseDayContext";
 import { DayChrome } from "@/components/blog/DayChrome";
 import { DayNotesList } from "@/components/blog/DayNotesList";
 import { DashboardGrid } from "@/components/dashboard/DashboardGrid";
@@ -36,6 +39,8 @@ export function DayDashboard({
   panels: DashboardPanel[];
   notes: NoteSnapshot[];
 }) {
+  const aiSummary = parseAiSummary(post?.day_context);
+
   return (
     <main className="mx-auto w-full max-w-6xl px-4 py-8 md:px-8">
       <DayChrome
@@ -43,20 +48,32 @@ export function DayDashboard({
         todayDate={todayDate}
         postId={post?.id}
         isPublic={post?.is_public}
+        hasAiSummary={Boolean(aiSummary)}
       />
 
       <section>
-        <h2 className="mb-3 text-sm font-semibold tracking-tight">Summary</h2>
+        <h2 className="mb-3 text-sm font-semibold tracking-tight">Day log</h2>
         {post ? (
           <div className="markdown-body rounded-2xl border border-[var(--border)] bg-[var(--surface)] px-5 py-4">
             <MarkdownContent content={post.private_summary} />
           </div>
         ) : (
           <p className="text-sm text-[var(--muted)]">
-            No digest yet for this day.
+            Nothing logged for this day yet.
           </p>
         )}
       </section>
+
+      {aiSummary ? (
+        <section className="mt-8">
+          <h2 className="mb-3 text-sm font-semibold tracking-tight">
+            AI summary
+          </h2>
+          <div className="markdown-body rounded-2xl border border-[var(--border)] bg-[var(--surface)] px-5 py-4">
+            <MarkdownContent content={aiSummary.private_summary} />
+          </div>
+        </section>
+      ) : null}
 
       <section className="mt-10">
         <DashboardGrid

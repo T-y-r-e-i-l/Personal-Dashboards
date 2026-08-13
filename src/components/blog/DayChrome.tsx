@@ -15,11 +15,13 @@ export function DayChrome({
   todayDate,
   postId,
   isPublic,
+  hasAiSummary = false,
 }: {
   date: string;
   todayDate: string;
   postId?: string | null;
   isPublic?: boolean;
+  hasAiSummary?: boolean;
 }) {
   const router = useRouter();
   const prev = shiftPostDate(date, -1);
@@ -71,7 +73,7 @@ export function DayChrome({
         </div>
       </div>
       <div className="flex flex-wrap items-center gap-2">
-        <RegenerateDayButton date={date} hasPost={Boolean(postId)} />
+        <RegenerateDayButton date={date} hasAiSummary={hasAiSummary} />
         {postId ? (
           <PublishToggle postId={postId} initialPublic={Boolean(isPublic)} />
         ) : null}

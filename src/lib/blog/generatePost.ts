@@ -8,12 +8,14 @@ import {
   filterDayContext,
   type DigestSelection,
 } from "@/lib/blog/digestSelection";
+import { parseAiSummary } from "@/lib/blog/parseDayContext";
+import { buildStaticSummaries } from "@/lib/blog/staticDigest";
 import type { DayContext } from "@/lib/blog/types";
 import type { BlogPost } from "@/lib/database.types";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { ensureLayoutSnapshot } from "@/lib/dashboard/layoutSnapshot";
 
-function cronDayHasSignal(context: DayContext): boolean {
+function dayHasSignal(context: DayContext): boolean {
   return (
     context.notes.length > 0 ||
     context.completed_tasks.length > 0 ||
@@ -121,120 +123,6 @@ export type GenerateDailyBlogResult = {
   reason?: string;
 };
 
-export async function generateDailyBlogPost(
-  supabase: SupabaseClient,
-  userId: string,
-  timezone: string,
-  location: string | null,
-  options: {
-    now?: Date;
-    postDate?: string;
-    overwrite?: boolean;
-    selection?: DigestSelection;
-  } = {},
-): Promise<GenerateDailyBlogResult> {
-  const { range, context: fullContext } = await collectDayContext(
-    supabase,
-    userId,
-    timezone,
-    location,
-    { now: options.now, postDate: options.postDate },
-  );
-
-  const context = options.selection
-    ? filterDayContext(fullContext, options.selection)
-    : fullContext;
-
-  await ensureDigestLayoutSnapshot(supabase, userId, range.postDate);
-
-  const existing = await supabase
-    .from("blog_posts")
-    .select("id, is_public")
-    .eq("user_id", userId)
-    .eq("post_date", range.postDate)
-    .maybeSingle();
-
-  if (existing.error) throw existing.error;
-  if (existing.data && !options.overwrite) {
-    return {
-      created: false,
-      updated: false,
-      post: null,
-      reason: "already_exists",
-    };
-  }
-
-  const hasSignal = options.selection
-    ? dayContextHasSignal(context)
-    : cronDayHasSignal(context);
-
-  if (!hasSignal) {
-    return {
-      created: false,
-      updated: false,
-      post: null,
-      reason: "empty_day",
-    };
-  }
-
-  const summaries = await writeSummaries(context);
-  const generatedAt = new Date().toISOString();
-
-  if (existing.data) {
-    const update = await supabase
-      .from("blog_posts")
-      .update({
-        private_summary: summaries.private_summary,
-        public_summary: summaries.public_summary,
-        notes_snapshot: context.notes,
-        day_context: context,
-        model: summaries.model,
-        generated_at: generatedAt,
-      })
-      .eq("id", existing.data.id)
-      .eq("user_id", userId)
-      .select("*")
-      .single();
-
-    if (update.error) throw update.error;
-    return {
-      created: false,
-      updated: true,
-      post: update.data as BlogPost,
-    };
-  }
-
-  const insert = await supabase
-    .from("blog_posts")
-    .insert({
-      user_id: userId,
-      post_date: range.postDate,
-      private_summary: summaries.private_summary,
-      public_summary: summaries.public_summary,
-      notes_snapshot: context.notes,
-      day_context: context,
-      is_public: false,
-      model: summaries.model,
-      generated_at: generatedAt,
-    })
-    .select("*")
-    .single();
-
-  if (insert.error) {
-    if (insert.error.code === "23505") {
-      return {
-        created: false,
-        updated: false,
-        post: null,
-        reason: "already_exists",
-      };
-    }
-    throw insert.error;
-  }
-
-  return { created: true, updated: false, post: insert.data as BlogPost };
-}
-
 async function ensureDigestLayoutSnapshot(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   supabase: SupabaseClient<any>,
@@ -265,6 +153,187 @@ async function ensureDigestLayoutSnapshot(
   });
 }
 
+/** Upsert a factual static day post (no LLM). Preserves existing AI summary. */
+export async function ensureStaticDayPost(
+  supabase: SupabaseClient,
+  userId: string,
+  timezone: string,
+  location: string | null,
+  options: { now?: Date; postDate?: string } = {},
+): Promise<GenerateDailyBlogResult> {
+  const { range, context } = await collectDayContext(
+    supabase,
+    userId,
+    timezone,
+    location,
+    { now: options.now, postDate: options.postDate },
+  );
+
+  if (!dayHasSignal(context)) {
+    return {
+      created: false,
+      updated: false,
+      post: null,
+      reason: "empty_day",
+    };
+  }
+
+  await ensureDigestLayoutSnapshot(supabase, userId, range.postDate);
+
+  const existing = await supabase
+    .from("blog_posts")
+    .select("id, is_public, day_context, model")
+    .eq("user_id", userId)
+    .eq("post_date", range.postDate)
+    .maybeSingle();
+
+  if (existing.error) throw existing.error;
+
+  const ai = parseAiSummary(existing.data?.day_context);
+  const staticSummaries = buildStaticSummaries(context);
+  const dayContextPayload: Record<string, unknown> = ai
+    ? { ...context, ai_summary: ai }
+    : { ...context };
+  const generatedAt = new Date().toISOString();
+  const payload = {
+    private_summary: staticSummaries.private_summary,
+    public_summary: staticSummaries.public_summary,
+    notes_snapshot: context.notes,
+    day_context: dayContextPayload,
+    model: ai?.model ?? null,
+    generated_at: generatedAt,
+  };
+
+  if (existing.data) {
+    const update = await supabase
+      .from("blog_posts")
+      .update(payload)
+      .eq("id", existing.data.id)
+      .eq("user_id", userId)
+      .select("*")
+      .single();
+    if (update.error) throw update.error;
+    return {
+      created: false,
+      updated: true,
+      post: update.data as BlogPost,
+    };
+  }
+
+  const insert = await supabase
+    .from("blog_posts")
+    .insert({
+      user_id: userId,
+      post_date: range.postDate,
+      is_public: false,
+      ...payload,
+    })
+    .select("*")
+    .single();
+
+  if (insert.error) {
+    if (insert.error.code === "23505") {
+      return {
+        created: false,
+        updated: false,
+        post: null,
+        reason: "already_exists",
+      };
+    }
+    throw insert.error;
+  }
+
+  return { created: true, updated: false, post: insert.data as BlogPost };
+}
+
+/** Write/replace AI reflection only; refreshes static post first. */
+export async function writeDayAiSummary(
+  supabase: SupabaseClient,
+  userId: string,
+  timezone: string,
+  location: string | null,
+  options: {
+    postDate: string;
+    selection: DigestSelection;
+  },
+): Promise<GenerateDailyBlogResult> {
+  const ensured = await ensureStaticDayPost(
+    supabase,
+    userId,
+    timezone,
+    location,
+    { postDate: options.postDate },
+  );
+
+  if (!ensured.post && ensured.reason === "empty_day") {
+    return ensured;
+  }
+
+  const { context: fullContext } = await collectDayContext(
+    supabase,
+    userId,
+    timezone,
+    location,
+    { postDate: options.postDate },
+  );
+  const filtered = filterDayContext(fullContext, options.selection);
+
+  if (!dayContextHasSignal(filtered)) {
+    return {
+      created: false,
+      updated: false,
+      post: ensured.post,
+      reason: "empty_day",
+    };
+  }
+
+  const ai = await writeSummaries(filtered);
+  const existing = await supabase
+    .from("blog_posts")
+    .select("id, day_context")
+    .eq("user_id", userId)
+    .eq("post_date", options.postDate)
+    .maybeSingle();
+
+  if (existing.error) throw existing.error;
+  if (!existing.data) {
+    return {
+      created: false,
+      updated: false,
+      post: null,
+      reason: "empty_day",
+    };
+  }
+
+  const dayContextPayload = {
+    ...fullContext,
+    ai_summary: {
+      private_summary: ai.private_summary,
+      public_summary: ai.public_summary,
+      model: ai.model,
+    },
+  };
+
+  const update = await supabase
+    .from("blog_posts")
+    .update({
+      day_context: dayContextPayload,
+      model: ai.model,
+      generated_at: new Date().toISOString(),
+    })
+    .eq("id", existing.data.id)
+    .eq("user_id", userId)
+    .select("*")
+    .single();
+
+  if (update.error) throw update.error;
+  return {
+    created: false,
+    updated: true,
+    post: update.data as BlogPost,
+  };
+}
+
 export async function runDailyBlogCron(now = new Date()) {
   const supabase = createAdminClient();
 
@@ -286,6 +355,7 @@ export async function runDailyBlogCron(now = new Date()) {
     userId: string;
     postDate: string;
     created: boolean;
+    updated: boolean;
     reason?: string;
   }[] = [];
 
@@ -299,7 +369,7 @@ export async function runDailyBlogCron(now = new Date()) {
     const range = getDayRange(timezone, digestNow);
 
     try {
-      const result = await generateDailyBlogPost(
+      const result = await ensureStaticDayPost(
         supabase,
         profile.id,
         timezone,
@@ -310,6 +380,7 @@ export async function runDailyBlogCron(now = new Date()) {
         userId: profile.id,
         postDate: range.postDate,
         created: result.created,
+        updated: result.updated,
         reason: result.reason,
       });
     } catch (err) {
@@ -318,6 +389,7 @@ export async function runDailyBlogCron(now = new Date()) {
         userId: profile.id,
         postDate: range.postDate,
         created: false,
+        updated: false,
         reason: err instanceof Error ? err.message : "error",
       });
     }
@@ -327,6 +399,7 @@ export async function runDailyBlogCron(now = new Date()) {
     checked: list.length,
     attempted: results.length,
     created: results.filter((r) => r.created).length,
+    updated: results.filter((r) => r.updated).length,
     results,
   };
 }

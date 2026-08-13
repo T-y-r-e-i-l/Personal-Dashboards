@@ -64,8 +64,8 @@ export default async function BlogIndexPage() {
 
       {!posts?.length ? (
         <p className="text-sm text-[var(--muted)]">
-          No digests yet. Open any day to see panels and notes; digests appear after
-          the evening generation window.
+          No day posts yet. Open any day with activity to create a factual day
+          log automatically. AI summary is optional from the day page.
         </p>
       ) : (
         <ul className="space-y-4">
