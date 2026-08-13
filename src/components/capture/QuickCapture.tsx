@@ -21,6 +21,7 @@ import { MarkdownContent } from "@/components/markdown/MarkdownContent";
 import { useCaptureDraft } from "@/components/capture/captureDraftStore";
 import { useToast } from "@/components/ui/Toast";
 import type { Capture } from "@/lib/database.types";
+import { playUiSound } from "@/lib/sounds/play";
 
 type Visibility = "private" | "public";
 type NotesRange = "today" | "7d" | "30d" | "90d" | "all";
@@ -172,11 +173,12 @@ export function QuickCapture({ userId }: { userId: string }) {
     onSuccess: async () => {
       setSuccess(true);
       window.setTimeout(() => setSuccess(false), 600);
+      playUiSound("capture_note");
       showToast("Captured");
       useCaptureDraft.getState().notifyCaptureSuccess();
       await queryClient.invalidateQueries({ queryKey: ["captures", userId] });
     },
-    onError: (err: Error) => showToast(err.message),
+    onError: (err: Error) => showToast(err.message, { variant: "error" }),
   });
 
   const updateCapture = useMutation({
@@ -454,6 +456,22 @@ export function QuickCapture({ userId }: { userId: string }) {
   );
 }
 
+function useDebouncedDocumentEditSound() {
+  const timerRef = useRef<number | null>(null);
+  useEffect(() => {
+    return () => {
+      if (timerRef.current != null) window.clearTimeout(timerRef.current);
+    };
+  }, []);
+  return () => {
+    if (timerRef.current != null) window.clearTimeout(timerRef.current);
+    timerRef.current = window.setTimeout(() => {
+      playUiSound("document_edit");
+      timerRef.current = null;
+    }, 400);
+  };
+}
+
 function CaptureComposer({
   pending,
   uploading,
@@ -477,6 +495,7 @@ function CaptureComposer({
   const shellRef = useRef<HTMLDivElement>(null);
   const pendingText = useCaptureDraft((s) => s.pendingText);
   const consumeDraft = useCaptureDraft((s) => s.consumeDraft);
+  const bumpDocumentEdit = useDebouncedDocumentEditSound();
 
   useEffect(() => {
     if (success) setContent("");
@@ -523,7 +542,10 @@ function CaptureComposer({
         <textarea
           ref={textareaRef}
           value={content}
-          onChange={(e) => setContent(e.target.value)}
+          onChange={(e) => {
+            setContent(e.target.value);
+            bumpDocumentEdit();
+          }}
           onKeyDown={(e) => {
             if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
               e.preventDefault();
@@ -610,6 +632,7 @@ function CaptureListItem({
   const [menuOpen, setMenuOpen] = useState(false);
   const editFileRef = useRef<HTMLInputElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const bumpDocumentEdit = useDebouncedDocumentEditSound();
   const stamp = item.updated_at || item.created_at;
   const edited =
     Boolean(item.updated_at) &&
@@ -654,7 +677,10 @@ function CaptureListItem({
 
           <textarea
             value={draft}
-            onChange={(e) => setDraft(e.target.value)}
+            onChange={(e) => {
+              setDraft(e.target.value);
+              bumpDocumentEdit();
+            }}
             onKeyDown={(e) => {
               if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
                 e.preventDefault();

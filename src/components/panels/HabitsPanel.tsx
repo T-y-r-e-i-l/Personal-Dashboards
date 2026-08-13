@@ -18,6 +18,7 @@ import {
 } from "@/lib/utils/habits";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useToast } from "@/components/ui/Toast";
+import { playUiSound } from "@/lib/sounds/play";
 
 const LEVEL_CLASS = [
   "bg-[var(--surface-soft)]",
@@ -174,9 +175,11 @@ export function HabitsPanel({
         if (error) throw error;
       }
     },
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: ["habit_logs", userId] }),
-    onError: (err: Error) => showToast(err.message),
+    onSuccess: (_data, vars) => {
+      playUiSound(vars.completed ? "habit_uncomplete" : "habit_complete");
+      void queryClient.invalidateQueries({ queryKey: ["habit_logs", userId] });
+    },
+    onError: (err: Error) => showToast(err.message, { variant: "error" }),
   });
 
   const add = useMutation({

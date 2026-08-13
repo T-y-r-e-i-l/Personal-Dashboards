@@ -1,7 +1,7 @@
 "use client";
 
 import { format } from "date-fns";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { PanelConfig, PanelType } from "@/lib/panels/types";
 import { PANEL_META } from "@/lib/panels/types";
 import { HabitsSettingsList } from "@/components/dashboard/HabitsSettingsList";
@@ -9,6 +9,7 @@ import { SleepSettingsForm } from "@/components/dashboard/SleepSettingsForm";
 import { TasksSettingsList } from "@/components/dashboard/TasksSettingsList";
 import { resolvePomodoroConfig } from "@/lib/time/pomodoro";
 import { useToast } from "@/components/ui/Toast";
+import { playUiSound } from "@/lib/sounds/play";
 
 const ALL_PANEL_TYPES = Object.keys(PANEL_META) as PanelType[];
 
@@ -41,6 +42,11 @@ export function PanelConfigModal({
   const meta = PANEL_META[panelType];
   const swapOptions = ALL_PANEL_TYPES.filter((type) => type !== panelType);
   const sleepDate = date ?? format(new Date(), "yyyy-MM-dd");
+
+  useEffect(() => {
+    playUiSound("panel_open");
+    return () => playUiSound("panel_close");
+  }, []);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
@@ -332,9 +338,11 @@ export function PanelConfigModal({
               onClick={() => {
                 void (async () => {
                   if (showSwap && swapType !== panelType) {
+                    playUiSound("panel_swap");
                     onSwap(swapType);
                     return;
                   }
+                  playUiSound("button_click");
                   setSaving(true);
                   try {
                     if (panelType === "tasks" && tasksSaveRef.current) {

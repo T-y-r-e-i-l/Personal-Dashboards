@@ -21,6 +21,7 @@ import {
   stopRunningEntry,
 } from "@/lib/time/entries";
 import type { PanelConfig } from "@/lib/panels/types";
+import { playUiSound } from "@/lib/sounds/play";
 
 export function TasksPanel({
   userId,
@@ -166,6 +167,7 @@ export function TasksPanel({
     onSuccess: async (result) => {
       await queryClient.invalidateQueries({ queryKey: ["tasks", userId] });
       if (result.completed) {
+        playUiSound("todo_complete");
         await queryClient.invalidateQueries({
           queryKey: ["captures", userId],
         });

@@ -28,6 +28,7 @@ import {
   resolvePomodoroConfig,
   type TimerMode,
 } from "@/lib/time/pomodoro";
+import { playUiSound } from "@/lib/sounds/play";
 
 type PomodoroMode = Exclude<TimerMode, "stopwatch">;
 
@@ -168,24 +169,28 @@ export function TimeTrackingPanel({
       });
     },
     onSuccess: async () => {
+      playUiSound("timer_start");
       setDescription("");
       await invalidateTime();
     },
     onError: (err: Error) => {
       if (isSchemaMigrationError(err.message)) {
-        showToast("Run the time_entries Pomodoro migration in Supabase.");
+        showToast("Run the time_entries Pomodoro migration in Supabase.", {
+          variant: "error",
+        });
         return;
       }
-      showToast(err.message);
+      showToast(err.message, { variant: "error" });
     },
   });
 
   const stop = useMutation({
     mutationFn: () => stopRunningEntry(supabase, userId),
     onSuccess: async () => {
+      playUiSound("timer_end");
       await invalidateTime();
     },
-    onError: (err: Error) => showToast(err.message),
+    onError: (err: Error) => showToast(err.message, { variant: "error" }),
   });
 
   const remove = useMutation({

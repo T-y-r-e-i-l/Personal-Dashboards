@@ -1,17 +1,25 @@
 "use client";
 
 import { create } from "zustand";
+import { playUiSound } from "@/lib/sounds/play";
+
+type ToastOptions = {
+  variant?: "info" | "error";
+};
 
 type ToastState = {
   message: string | null;
-  show: (message: string) => void;
+  show: (message: string, options?: ToastOptions) => void;
   clear: () => void;
 };
 
 export const useToast = create<ToastState>((set) => ({
   message: null,
-  show: (message) => {
+  show: (message, options) => {
     set({ message });
+    if (options?.variant === "error") {
+      playUiSound("error");
+    }
     window.setTimeout(() => set({ message: null }), 2800);
   },
   clear: () => set({ message: null }),

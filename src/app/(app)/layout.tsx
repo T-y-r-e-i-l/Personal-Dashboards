@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { AppShell } from "@/components/layout/AppShell";
 import { DashboardActionsProvider } from "@/components/dashboard/DashboardActionsContext";
 import { RetroThemeProvider } from "@/components/providers/RetroThemeProvider";
+import { SoundProvider } from "@/components/providers/SoundProvider";
 
 export default async function AppLayout({
   children,
@@ -16,13 +17,24 @@ export default async function AppLayout({
 
   if (!user) redirect("/login");
 
-  const { data: profile } = await supabase
+  const { data: profile, error: profileError } = await supabase
     .from("profiles")
-    .select("retro_ui_enabled")
+    .select("retro_ui_enabled, ui_sounds_enabled")
     .eq("id", user.id)
     .maybeSingle();
 
-  const retroEnabled = profile?.retro_ui_enabled === true;
+  let retroEnabled = profile?.retro_ui_enabled === true;
+  let soundsEnabled = profile?.ui_sounds_enabled === true;
+
+  if (profileError && /column|schema cache/i.test(profileError.message)) {
+    const { data: fallback } = await supabase
+      .from("profiles")
+      .select("retro_ui_enabled")
+      .eq("id", user.id)
+      .maybeSingle();
+    retroEnabled = fallback?.retro_ui_enabled === true;
+    soundsEnabled = false;
+  }
 
   return (
     <DashboardActionsProvider>
@@ -32,9 +44,11 @@ export default async function AppLayout({
         }}
       />
       <RetroThemeProvider enabled={retroEnabled} />
-      <AppShell email={user.email} retroEnabled={retroEnabled}>
-        {children}
-      </AppShell>
+      <SoundProvider enabled={soundsEnabled}>
+        <AppShell email={user.email} retroEnabled={retroEnabled}>
+          {children}
+        </AppShell>
+      </SoundProvider>
     </DashboardActionsProvider>
   );
 }

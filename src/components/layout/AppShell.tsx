@@ -8,6 +8,7 @@ import { SignOutButton } from "@/components/ui/SignOutButton";
 import { useDashboardActions } from "@/components/dashboard/DashboardActionsContext";
 import { AddPanelMenu } from "@/components/dashboard/AddPanelMenu";
 import { MobileFinderNav } from "@/components/layout/MobileFinderNav";
+import { playUiSound } from "@/lib/sounds/play";
 
 const STORAGE_KEY = "pd-sidebar-collapsed";
 
@@ -63,6 +64,7 @@ export function AppShell({
   const todayActive = pathname.startsWith("/dashboard");
   const blogActive = pathname.startsWith("/blog");
   const settingsActive = pathname.startsWith("/settings");
+  const soundsActive = pathname.startsWith("/sounds");
   const showAddPanel = canAddPanel && todayActive;
 
   return (
@@ -73,6 +75,7 @@ export function AppShell({
       >
         <Link
           href="/dashboard"
+          onClick={() => playUiSound("nav_click")}
           className="app-menubar-brand px-2 py-0.5 font-bold hover:bg-[var(--ink)] hover:text-[var(--canvas)]"
         >
           Ghost Writer
@@ -86,11 +89,17 @@ export function AppShell({
         <MenuBarLink href="/settings" active={settingsActive}>
           Settings
         </MenuBarLink>
+        <MenuBarLink href="/sounds" active={soundsActive}>
+          Sounds
+        </MenuBarLink>
         {showAddPanel ? (
           <div className="relative" ref={menuAddRef}>
             <button
               type="button"
-              onClick={() => setAddOpen((v) => !v)}
+              onClick={() => {
+                playUiSound("button_click");
+                setAddOpen((v) => !v);
+              }}
               className={`app-menubar-item px-2 py-0.5 font-normal ${
                 addOpen
                   ? "bg-[var(--ink)] text-[var(--canvas)]"
@@ -208,6 +217,13 @@ export function AppShell({
               active={settingsActive}
               icon="settings"
             />
+            <NavLink
+              href="/sounds"
+              label="Sounds"
+              collapsed={collapsed}
+              active={soundsActive}
+              icon="sounds"
+            />
           </nav>
 
           <div
@@ -217,7 +233,10 @@ export function AppShell({
               <div className="relative" ref={sidebarAddRef}>
                 <button
                   type="button"
-                  onClick={() => setAddOpen((v) => !v)}
+                  onClick={() => {
+                    playUiSound("button_click");
+                    setAddOpen((v) => !v);
+                  }}
                   title="Add panel"
                   aria-label="Add panel"
                   className={`text-sm text-[var(--muted)] transition hover:text-[var(--ink)] ${
@@ -264,7 +283,10 @@ export function AppShell({
             </Link>
             <button
               type="button"
-              onClick={() => setMobileOpen(true)}
+              onClick={() => {
+                playUiSound("panel_open");
+                setMobileOpen(true);
+              }}
               className="rounded-xl p-2 text-[var(--ink)] hover:bg-[var(--surface-soft)]"
               aria-label="Open menu"
               aria-expanded={mobileOpen}
@@ -281,6 +303,7 @@ export function AppShell({
                   className="absolute inset-0 bg-black/35"
                   aria-label="Close menu"
                   onClick={() => {
+                    playUiSound("panel_close");
                     setMobileOpen(false);
                     setAddOpen(false);
                   }}
@@ -298,6 +321,7 @@ export function AppShell({
                       className="panel-close-box panel-chrome-btn shrink-0"
                       aria-label="Close menu"
                       onClick={() => {
+                        playUiSound("panel_close");
                         setMobileOpen(false);
                         setAddOpen(false);
                       }}
@@ -313,10 +337,15 @@ export function AppShell({
                       todayActive={todayActive}
                       blogActive={blogActive}
                       settingsActive={settingsActive}
+                      soundsActive={soundsActive}
                       showAddPanel={showAddPanel}
                       addOpen={addOpen}
-                      onToggleAdd={() => setAddOpen((v) => !v)}
+                      onToggleAdd={() => {
+                        playUiSound("button_click");
+                        setAddOpen((v) => !v);
+                      }}
                       onAddPanel={(type) => {
+                        playUiSound("button_click");
                         addPanel(type);
                         setAddOpen(false);
                         setMobileOpen(false);
@@ -334,7 +363,10 @@ export function AppShell({
                   type="button"
                   className="absolute inset-0 bg-[var(--ink)]/30"
                   aria-label="Close menu"
-                  onClick={() => setMobileOpen(false)}
+                  onClick={() => {
+                    playUiSound("panel_close");
+                    setMobileOpen(false);
+                  }}
                 />
                 <div className="absolute inset-y-0 right-0 flex w-[min(20rem,88vw)] flex-col border-l border-[var(--border)] bg-[var(--surface)] shadow-xl">
                   <div className="flex items-center justify-between border-b border-[var(--border)] px-4 py-3">
@@ -343,7 +375,10 @@ export function AppShell({
                     </p>
                     <button
                       type="button"
-                      onClick={() => setMobileOpen(false)}
+                      onClick={() => {
+                        playUiSound("panel_close");
+                        setMobileOpen(false);
+                      }}
                       className="rounded-xl px-2 py-1 text-sm text-[var(--muted)] hover:text-[var(--ink)]"
                     >
                       Close
@@ -368,6 +403,12 @@ export function AppShell({
                       active={settingsActive}
                       onNavigate={() => setMobileOpen(false)}
                     />
+                    <MobileNavLink
+                      href="/sounds"
+                      label="Sounds"
+                      active={soundsActive}
+                      onNavigate={() => setMobileOpen(false)}
+                    />
                     {showAddPanel ? (
                       <div className="mt-4 border-t border-[var(--border)] pt-4">
                         <p className="mb-2 px-3 text-xs font-medium uppercase tracking-wide text-[var(--muted)]">
@@ -375,7 +416,10 @@ export function AppShell({
                         </p>
                         <button
                           type="button"
-                          onClick={() => setAddOpen((v) => !v)}
+                          onClick={() => {
+                            playUiSound("button_click");
+                            setAddOpen((v) => !v);
+                          }}
                           className="flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-sm text-[var(--muted)] hover:bg-[var(--surface-soft)] hover:text-[var(--ink)]"
                         >
                           Add panel
@@ -430,6 +474,7 @@ function MenuBarLink({
   return (
     <Link
       href={href}
+      onClick={() => playUiSound("nav_click")}
       className={`app-menubar-item px-2 py-0.5 font-normal ${
         active
           ? "bg-[var(--ink)] text-[var(--canvas)]"
@@ -453,13 +498,14 @@ function NavLink({
   label: string;
   collapsed: boolean;
   active: boolean;
-  icon: "today" | "blog" | "settings";
+  icon: "today" | "blog" | "settings" | "sounds";
 }) {
   return (
     <Link
       href={href}
       title={label}
       aria-label={label}
+      onClick={() => playUiSound("nav_click")}
       className={`flex items-center rounded-xl text-sm font-medium transition ${
         collapsed ? "h-10 w-10 justify-center" : "gap-2 px-3 py-2"
       } ${
@@ -488,7 +534,10 @@ function MobileNavLink({
   return (
     <Link
       href={href}
-      onClick={onNavigate}
+      onClick={() => {
+        playUiSound("nav_click");
+        onNavigate();
+      }}
       className={`rounded-xl px-3 py-2.5 text-sm font-medium ${
         active
           ? "bg-[var(--surface-soft)] text-[var(--ink)]"
@@ -500,7 +549,7 @@ function MobileNavLink({
   );
 }
 
-function NavIcon({ name }: { name: "today" | "blog" | "settings" }) {
+function NavIcon({ name }: { name: "today" | "blog" | "settings" | "sounds" }) {
   if (name === "today") {
     return (
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
@@ -529,6 +578,25 @@ function NavIcon({ name }: { name: "today" | "blog" | "settings" }) {
         />
         <path
           d="M7.5 8.5h9M7.5 12h9M7.5 15.5h5"
+          stroke="currentColor"
+          strokeWidth="1.6"
+          strokeLinecap="round"
+        />
+      </svg>
+    );
+  }
+
+  if (name === "sounds") {
+    return (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
+        <path
+          d="M4 10v4h3l4 3V7L7 10H4Z"
+          stroke="currentColor"
+          strokeWidth="1.6"
+          strokeLinejoin="round"
+        />
+        <path
+          d="M15 9.5a3.5 3.5 0 0 1 0 5M17.5 7.5a6 6 0 0 1 0 9"
           stroke="currentColor"
           strokeWidth="1.6"
           strokeLinecap="round"

@@ -4,11 +4,13 @@ import Link from "next/link";
 import { SignOutButton } from "@/components/ui/SignOutButton";
 import { AddPanelMenu } from "@/components/dashboard/AddPanelMenu";
 import type { PanelType } from "@/lib/panels/types";
+import { playUiSound } from "@/lib/sounds/play";
 
 export function MobileFinderNav({
   todayActive,
   blogActive,
   settingsActive,
+  soundsActive,
   showAddPanel,
   addOpen,
   onToggleAdd,
@@ -20,6 +22,7 @@ export function MobileFinderNav({
   todayActive: boolean;
   blogActive: boolean;
   settingsActive: boolean;
+  soundsActive: boolean;
   showAddPanel: boolean;
   addOpen: boolean;
   onToggleAdd: () => void;
@@ -53,6 +56,13 @@ export function MobileFinderNav({
           label="Settings"
           active={settingsActive}
           kind="gear"
+          onNavigate={onNavigate}
+        />
+        <FinderIconLink
+          href="/sounds"
+          label="Sounds"
+          active={soundsActive}
+          kind="speaker"
           onNavigate={onNavigate}
         />
         {showAddPanel ? (
@@ -109,14 +119,17 @@ function FinderIconLink({
   href: string;
   label: string;
   active: boolean;
-  kind: "document" | "folder" | "gear";
+  kind: "document" | "folder" | "gear" | "speaker";
   onNavigate: () => void;
 }) {
   return (
     <div className="mobile-finder-cell flex items-center justify-center">
       <Link
         href={href}
-        onClick={onNavigate}
+        onClick={() => {
+          playUiSound("nav_click");
+          onNavigate();
+        }}
         className={`mobile-finder-icon flex flex-col items-center justify-center gap-1 ${
           active ? "is-active" : ""
         }`}
@@ -126,6 +139,8 @@ function FinderIconLink({
           <MacFolderIcon />
         ) : kind === "gear" ? (
           <MacGearIcon />
+        ) : kind === "speaker" ? (
+          <MacSpeakerIcon />
         ) : (
           <MacDocumentIcon />
         )}
@@ -237,6 +252,33 @@ function MacAppIcon() {
         d="M16 10v12M10 16h12"
         stroke="#000"
         strokeWidth="2"
+        strokeLinecap="square"
+      />
+    </svg>
+  );
+}
+
+function MacSpeakerIcon() {
+  return (
+    <svg
+      width="32"
+      height="32"
+      viewBox="0 0 32 32"
+      aria-hidden
+      className="mobile-finder-glyph"
+    >
+      <path
+        d="M6 12h4l6-5v18l-6-5H6V12Z"
+        fill="#fff"
+        stroke="#000"
+        strokeWidth="1.5"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M20 12.5a4.5 4.5 0 0 1 0 7M23 10a8 8 0 0 1 0 12"
+        fill="none"
+        stroke="#000"
+        strokeWidth="1.5"
         strokeLinecap="square"
       />
     </svg>

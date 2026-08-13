@@ -33,6 +33,7 @@ export type Database = {
           onboarding_completed: boolean;
           daily_selfie_enabled: boolean;
           retro_ui_enabled: boolean;
+          ui_sounds_enabled: boolean;
           created_at: string;
           updated_at: string;
         };
@@ -44,6 +45,7 @@ export type Database = {
           onboarding_completed?: boolean;
           daily_selfie_enabled?: boolean;
           retro_ui_enabled?: boolean;
+          ui_sounds_enabled?: boolean;
           created_at?: string;
           updated_at?: string;
         };
@@ -375,6 +377,27 @@ export type Database = {
         };
         Update: Partial<Database["public"]["Tables"]["daily_selfies"]["Insert"]>;
       };
+      ui_sound_bindings: {
+        Row: {
+          id: string;
+          user_id: string;
+          slot: string;
+          storage_path: string;
+          original_filename: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          slot: string;
+          storage_path: string;
+          original_filename?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["ui_sound_bindings"]["Insert"]>;
+      };
     };
   };
 };
@@ -397,3 +420,5 @@ export type CalendarEvent =
 export type TimeEntry = Database["public"]["Tables"]["time_entries"]["Row"];
 export type SleepLog = Database["public"]["Tables"]["sleep_logs"]["Row"];
 export type DailySelfie = Database["public"]["Tables"]["daily_selfies"]["Row"];
+export type UiSoundBinding =
+  Database["public"]["Tables"]["ui_sound_bindings"]["Row"];
