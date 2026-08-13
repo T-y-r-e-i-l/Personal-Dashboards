@@ -200,48 +200,6 @@ function AnalyticsView({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-3">
-      <dl className="grid shrink-0 grid-cols-2 gap-x-4 gap-y-2 text-sm">
-        <div>
-          <dt className="text-[var(--muted)]">Avg bedtime</dt>
-          <dd className="mt-0.5 text-base font-semibold">
-            {summary.avgBedtimeLabel ?? "—"}
-          </dd>
-        </div>
-        <div>
-          <dt className="text-[var(--muted)]">Avg duration</dt>
-          <dd className="mt-0.5 text-base font-semibold">
-            {summary.avgDurationMinutes == null
-              ? "—"
-              : formatDurationMinutes(summary.avgDurationMinutes)}
-          </dd>
-        </div>
-        <div>
-          <dt className="text-[var(--muted)]">Avg score</dt>
-          <dd className="mt-0.5 text-base font-semibold">
-            {summary.avgScore == null ? (
-              "—"
-            ) : (
-              <>
-                {summary.avgScore}
-                <span className="text-xs font-normal text-[var(--muted)]">
-                  /100
-                </span>
-              </>
-            )}
-          </dd>
-        </div>
-        <div>
-          <dt className="text-[var(--muted)]">Avg rating</dt>
-          <dd className="mt-0.5 text-base font-semibold">
-            {summary.avgRating ? ratingLabel(summary.avgRating) : "—"}
-          </dd>
-        </div>
-      </dl>
-
-      <p className="shrink-0 text-xs text-[var(--muted)]">
-        Based on {summary.count} of {summary.windowDays} nights
-      </p>
-
       <div className="min-h-[110px] flex-1">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={summary.chartPoints}>
@@ -328,6 +286,48 @@ function AnalyticsView({
           </LineChart>
         </ResponsiveContainer>
       </div>
+
+      <dl className="grid shrink-0 grid-cols-2 gap-x-4 gap-y-2 text-sm">
+        <div>
+          <dt className="text-[var(--muted)]">Avg bedtime</dt>
+          <dd className="mt-0.5 text-base font-semibold">
+            {summary.avgBedtimeLabel ?? "—"}
+          </dd>
+        </div>
+        <div>
+          <dt className="text-[var(--muted)]">Avg duration</dt>
+          <dd className="mt-0.5 text-base font-semibold">
+            {summary.avgDurationMinutes == null
+              ? "—"
+              : formatDurationMinutes(summary.avgDurationMinutes)}
+          </dd>
+        </div>
+        <div>
+          <dt className="text-[var(--muted)]">Avg score</dt>
+          <dd className="mt-0.5 text-base font-semibold">
+            {summary.avgScore == null ? (
+              "—"
+            ) : (
+              <>
+                {summary.avgScore}
+                <span className="text-xs font-normal text-[var(--muted)]">
+                  /100
+                </span>
+              </>
+            )}
+          </dd>
+        </div>
+        <div>
+          <dt className="text-[var(--muted)]">Avg rating</dt>
+          <dd className="mt-0.5 text-base font-semibold">
+            {summary.avgRating ? ratingLabel(summary.avgRating) : "—"}
+          </dd>
+        </div>
+      </dl>
+
+      <p className="shrink-0 text-xs text-[var(--muted)]">
+        Based on {summary.count} of {summary.windowDays} nights
+      </p>
     </div>
   );
 }

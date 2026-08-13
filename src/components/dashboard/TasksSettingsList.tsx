@@ -2,6 +2,7 @@
 
 import {
   useEffect,
+  useMemo,
   useRef,
   useState,
   type MutableRefObject,
@@ -9,6 +10,13 @@ import {
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import type { Task } from "@/lib/database.types";
+
+type TasksTab = "todo" | "completed";
+
+const TABS: { value: TasksTab; label: string }[] = [
+  { value: "todo", label: "To-Do" },
+  { value: "completed", label: "Completed" },
+];
 
 function moveItem(items: Task[], fromId: string, toId: string): Task[] {
   const from = items.findIndex((item) => item.id === fromId);
@@ -18,6 +26,10 @@ function moveItem(items: Task[], fromId: string, toId: string): Task[] {
   const [moved] = next.splice(from, 1);
   next.splice(to, 0, moved);
   return next;
+}
+
+function isDone(task: Task) {
+  return task.status === "done";
 }
 
 export function TasksSettingsList({
@@ -33,6 +45,7 @@ export function TasksSettingsList({
   const [deletedIds, setDeletedIds] = useState<string[]>([]);
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [dropTargetId, setDropTargetId] = useState<string | null>(null);
+  const [tab, setTab] = useState<TasksTab>("todo");
   const hydratedKey = useRef<string | null>(null);
 
   const tasks = useQuery({
@@ -123,6 +136,30 @@ export function TasksSettingsList({
     setDropTargetId(null);
   }
 
+  function reorderInTab(fromId: string, toId: string) {
+    setDraft((current) => {
+      const items = current ?? [];
+      const open = items.filter((task) => !isDone(task));
+      const done = items.filter(isDone);
+      if (tab === "todo") {
+        return [...moveItem(open, fromId, toId), ...done];
+      }
+      return [...open, ...moveItem(done, fromId, toId)];
+    });
+  }
+
+  const items = draft ?? [];
+  const openItems = useMemo(
+    () => items.filter((task) => !isDone(task)),
+    [items],
+  );
+  const doneItems = useMemo(() => items.filter(isDone), [items]);
+  const tabItems = tab === "todo" ? openItems : doneItems;
+  const displayItems =
+    draggingId && dropTargetId && draggingId !== dropTargetId
+      ? moveItem(tabItems, draggingId, dropTargetId)
+      : tabItems;
+
   if (tasks.isLoading) {
     return <p className="text-sm text-[var(--muted)]">Loading tasks…</p>;
   }
@@ -135,17 +172,45 @@ export function TasksSettingsList({
     );
   }
 
-  const items = draft ?? [];
-  const displayItems =
-    draggingId && dropTargetId && draggingId !== dropTargetId
-      ? moveItem(items, draggingId, dropTargetId)
-      : items;
-
   return (
     <div className="space-y-2">
-      <span className="block text-sm font-medium">Your to-dos</span>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <span className="block text-sm font-medium">Your to-dos</span>
+        <div
+          className="flex shrink-0 rounded-full bg-[var(--surface-soft)] p-0.5"
+          role="tablist"
+          aria-label="To-do list filter"
+        >
+          {TABS.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              role="tab"
+              aria-selected={tab === option.value}
+              onClick={() => {
+                clearDragState();
+                setTab(option.value);
+              }}
+              className={`rounded-full px-2.5 py-1 text-[11px] font-semibold tracking-wide transition ${
+                tab === option.value
+                  ? "bg-[var(--ink)] text-[var(--canvas)]"
+                  : "text-[var(--muted)] hover:text-[var(--ink)]"
+              }`}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {items.length === 0 ? (
         <p className="text-sm text-[var(--muted)]">No active to-dos.</p>
+      ) : tabItems.length === 0 ? (
+        <p className="text-sm text-[var(--muted)]">
+          {tab === "todo"
+            ? "No open to-dos."
+            : "No completed to-dos."}
+        </p>
       ) : (
         <ul className="max-h-64 space-y-2 overflow-y-auto">
           {displayItems.map((task) => {
@@ -170,9 +235,7 @@ export function TasksSettingsList({
                     e.dataTransfer.getData("text/task-id") || draggingId;
                   clearDragState();
                   if (fromId !== task.id) {
-                    setDraft((current) =>
-                      moveItem(current ?? items, fromId, task.id),
-                    );
+                    reorderInTab(fromId, task.id);
                   }
                 }}
                 className={`flex items-center gap-2 rounded-xl border px-3 py-2 transition ${
@@ -199,16 +262,13 @@ export function TasksSettingsList({
                 <div className="min-w-0 flex-1">
                   <p
                     className={`truncate text-sm font-medium ${
-                      task.status === "done"
+                      isDone(task)
                         ? "text-[var(--muted)] line-through"
                         : "text-[var(--ink)]"
                     }`}
                   >
                     {task.title}
                   </p>
-                  {task.status === "done" ? (
-                    <p className="text-[11px] text-[var(--muted)]">Completed</p>
-                  ) : null}
                 </div>
                 <button
                   type="button"
