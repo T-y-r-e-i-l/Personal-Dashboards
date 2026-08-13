@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useToast } from "@/components/ui/Toast";
@@ -22,6 +22,13 @@ import {
 } from "@/lib/time/entries";
 import type { PanelConfig } from "@/lib/panels/types";
 import { playUiSound } from "@/lib/sounds/play";
+
+type TaskFloatPopup = {
+  text: "Nice!" | "Oops!";
+  key: number;
+};
+
+const HIDE_COMPLETED_GRACE_MS = 2000;
 
 export function TasksPanel({
   userId,
@@ -45,11 +52,66 @@ export function TasksPanel({
   const [editTitle, setEditTitle] = useState("");
   const [editDueDate, setEditDueDate] = useState("");
   const [now, setNow] = useState(() => Date.now());
+  const [floatPopups, setFloatPopups] = useState<
+    Record<string, TaskFloatPopup>
+  >({});
+  const [heldCompletedIds, setHeldCompletedIds] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const hideCompletedTimers = useRef<Map<string, number>>(new Map());
+  const popupKeyRef = useRef(0);
 
   const interactive = !readOnly;
   const historical = Boolean(readOnly && date && timeZone);
   const historicalUnavailable = Boolean(readOnly && date && !timeZone);
   const showCompleted = config?.showCompleted ?? true;
+
+  useEffect(() => {
+    const timers = hideCompletedTimers.current;
+    return () => {
+      for (const timer of timers.values()) window.clearTimeout(timer);
+      timers.clear();
+    };
+  }, []);
+
+  function clearHeldCompleted(taskId: string) {
+    const existing = hideCompletedTimers.current.get(taskId);
+    if (existing != null) {
+      window.clearTimeout(existing);
+      hideCompletedTimers.current.delete(taskId);
+    }
+    setHeldCompletedIds((prev) => {
+      if (!prev.has(taskId)) return prev;
+      const next = new Set(prev);
+      next.delete(taskId);
+      return next;
+    });
+  }
+
+  function holdCompletedBriefly(taskId: string) {
+    clearHeldCompleted(taskId);
+    setHeldCompletedIds((prev) => {
+      const next = new Set(prev);
+      next.add(taskId);
+      return next;
+    });
+    const timer = window.setTimeout(() => {
+      hideCompletedTimers.current.delete(taskId);
+      setHeldCompletedIds((prev) => {
+        if (!prev.has(taskId)) return prev;
+        const next = new Set(prev);
+        next.delete(taskId);
+        return next;
+      });
+    }, HIDE_COMPLETED_GRACE_MS);
+    hideCompletedTimers.current.set(taskId, timer);
+  }
+
+  function showTaskFloat(taskId: string, text: TaskFloatPopup["text"]) {
+    popupKeyRef.current += 1;
+    const key = popupKeyRef.current;
+    setFloatPopups((prev) => ({ ...prev, [taskId]: { text, key } }));
+  }
 
   const tasks = useQuery({
     queryKey: historical
@@ -162,15 +224,19 @@ export function TasksPanel({
         });
       }
 
-      return { completed: next === "done" };
+      return { completed: next === "done", id };
     },
     onSuccess: async (result) => {
       await queryClient.invalidateQueries({ queryKey: ["tasks", userId] });
       playUiSound(result.completed ? "todo_complete" : "todo_uncomplete");
+      showTaskFloat(result.id, result.completed ? "Nice!" : "Oops!");
       if (result.completed) {
+        if (!showCompleted) holdCompletedBriefly(result.id);
         await queryClient.invalidateQueries({
           queryKey: ["captures", userId],
         });
+      } else {
+        clearHeldCompleted(result.id);
       }
     },
   });
@@ -319,7 +385,11 @@ export function TasksPanel({
   }
 
   const items = (tasks.data ?? []).filter(
-    (task) => historical || showCompleted || task.status !== "done",
+    (task) =>
+      historical ||
+      showCompleted ||
+      task.status !== "done" ||
+      heldCompletedIds.has(task.id),
   );
   if (items.length === 0 && !(adding && interactive)) {
     return (
@@ -432,39 +502,55 @@ export function TasksPanel({
                 isRunning ? "bg-[var(--surface-soft)]" : ""
               }`}
             >
-              {readOnly ? (
-                <span
-                  aria-hidden
-                  className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${
-                    task.status === "done"
-                      ? "border-[var(--accent)] bg-[var(--accent)] text-white"
-                      : "border-[var(--border)]"
-                  }`}
-                >
-                  {task.status === "done" ? "✓" : ""}
-                </span>
-              ) : (
-                <button
-                  type="button"
-                  aria-label={
-                    task.status === "done" ? "Mark incomplete" : "Complete"
-                  }
-                  onClick={() =>
-                    toggle.mutate({
-                      id: task.id,
-                      status: task.status,
-                      title: task.title,
-                    })
-                  }
-                  className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${
-                    task.status === "done"
-                      ? "border-[var(--accent)] bg-[var(--accent)] text-white"
-                      : "border-[var(--border)]"
-                  }`}
-                >
-                  {task.status === "done" ? "✓" : ""}
-                </button>
-              )}
+              <span className="relative mt-0.5 inline-flex h-5 w-5 shrink-0">
+                {readOnly ? (
+                  <span
+                    aria-hidden
+                    className={`flex h-5 w-5 items-center justify-center rounded-full border ${
+                      task.status === "done"
+                        ? "border-[var(--accent)] bg-[var(--accent)] text-white"
+                        : "border-[var(--border)]"
+                    }`}
+                  >
+                    {task.status === "done" ? "✓" : ""}
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    aria-label={
+                      task.status === "done" ? "Mark incomplete" : "Complete"
+                    }
+                    onClick={() =>
+                      toggle.mutate({
+                        id: task.id,
+                        status: task.status,
+                        title: task.title,
+                      })
+                    }
+                    className={`flex h-5 w-5 items-center justify-center rounded-full border ${
+                      task.status === "done"
+                        ? "border-[var(--accent)] bg-[var(--accent)] text-white"
+                        : "border-[var(--border)]"
+                    }`}
+                  >
+                    {task.status === "done" ? "✓" : ""}
+                  </button>
+                )}
+                {floatPopups[task.id] ? (
+                  <TaskFloatLabel
+                    text={floatPopups[task.id].text}
+                    animKey={floatPopups[task.id].key}
+                    onDone={(animKey) => {
+                      setFloatPopups((prev) => {
+                        if (prev[task.id]?.key !== animKey) return prev;
+                        const next = { ...prev };
+                        delete next[task.id];
+                        return next;
+                      });
+                    }}
+                  />
+                ) : null}
+              </span>
               <div className="min-w-0 flex-1">
                 {interactive ? (
                   <button
@@ -590,6 +676,27 @@ export function TasksPanel({
         </button>
       ) : null}
     </div>
+  );
+}
+
+function TaskFloatLabel({
+  text,
+  animKey,
+  onDone,
+}: {
+  text: TaskFloatPopup["text"];
+  animKey: number;
+  onDone: (animKey: number) => void;
+}) {
+  return (
+    <span
+      key={animKey}
+      aria-hidden
+      className="task-float-fade absolute left-1/2 top-0 z-10 whitespace-nowrap text-xs font-bold text-[var(--accent)]"
+      onAnimationEnd={() => onDone(animKey)}
+    >
+      {text}
+    </span>
   );
 }
 
