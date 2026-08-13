@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
 import { isValidPostDate } from "@/lib/blog/dayRange";
+import {
+  parseDigestSelection,
+  selectionHasSignal,
+} from "@/lib/blog/digestSelection";
 import { generateDailyBlogPost } from "@/lib/blog/generatePost";
 import { createClient } from "@/lib/supabase/server";
 
@@ -38,6 +42,33 @@ export async function POST(request: Request) {
     );
   }
 
+  const selection = parseDigestSelection(
+    typeof body === "object" && body !== null && "selection" in body
+      ? (body as { selection: unknown }).selection
+      : null,
+  );
+
+  if (!selection) {
+    return NextResponse.json(
+      { error: "Invalid selection. Choose notes and/or activities." },
+      { status: 400 },
+    );
+  }
+
+  if (!selectionHasSignal(selection)) {
+    return NextResponse.json(
+      {
+        ok: false,
+        postDate: date,
+        created: false,
+        updated: false,
+        reason: "empty_selection",
+        error: "Select at least one note or activity.",
+      },
+      { status: 400 },
+    );
+  }
+
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
     .select("timezone, location")
@@ -57,7 +88,7 @@ export async function POST(request: Request) {
       user.id,
       timezone,
       location,
-      { postDate: date, overwrite: true },
+      { postDate: date, overwrite: true, selection },
     );
 
     if (result.reason === "empty_day") {
@@ -69,7 +100,7 @@ export async function POST(request: Request) {
           updated: false,
           reason: "empty_day",
           error:
-            "Nothing to summarize for this day (no notes, tasks, or other activity).",
+            "Nothing to summarize for the sources you selected.",
         },
         { status: 400 },
       );

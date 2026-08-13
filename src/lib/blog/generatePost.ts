@@ -3,10 +3,28 @@ import { z } from "zod";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { collectDayContext } from "@/lib/blog/collectDayContext";
 import { getDayRange, getDigestNow } from "@/lib/blog/dayRange";
+import {
+  dayContextHasSignal,
+  filterDayContext,
+  type DigestSelection,
+} from "@/lib/blog/digestSelection";
 import type { DayContext } from "@/lib/blog/types";
 import type { BlogPost } from "@/lib/database.types";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { ensureLayoutSnapshot } from "@/lib/dashboard/layoutSnapshot";
+
+function cronDayHasSignal(context: DayContext): boolean {
+  return (
+    context.notes.length > 0 ||
+    context.completed_tasks.length > 0 ||
+    context.priorities.length > 0 ||
+    context.mood !== null ||
+    context.calendar.length > 0 ||
+    context.habits.some((h) => h.completed) ||
+    (context.water !== null && context.water.glasses > 0) ||
+    context.time_tracking.length > 0
+  );
+}
 
 const summarySchema = z.object({
   private_summary: z
@@ -112,15 +130,20 @@ export async function generateDailyBlogPost(
     now?: Date;
     postDate?: string;
     overwrite?: boolean;
+    selection?: DigestSelection;
   } = {},
 ): Promise<GenerateDailyBlogResult> {
-  const { range, context } = await collectDayContext(
+  const { range, context: fullContext } = await collectDayContext(
     supabase,
     userId,
     timezone,
     location,
     { now: options.now, postDate: options.postDate },
   );
+
+  const context = options.selection
+    ? filterDayContext(fullContext, options.selection)
+    : fullContext;
 
   await ensureDigestLayoutSnapshot(supabase, userId, range.postDate);
 
@@ -141,15 +164,9 @@ export async function generateDailyBlogPost(
     };
   }
 
-  const hasSignal =
-    context.notes.length > 0 ||
-    context.completed_tasks.length > 0 ||
-    context.priorities.length > 0 ||
-    context.mood !== null ||
-    context.calendar.length > 0 ||
-    context.habits.some((h) => h.completed) ||
-    (context.water !== null && context.water.glasses > 0) ||
-    context.time_tracking.length > 0;
+  const hasSignal = options.selection
+    ? dayContextHasSignal(context)
+    : cronDayHasSignal(context);
 
   if (!hasSignal) {
     return {
