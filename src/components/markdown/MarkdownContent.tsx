@@ -80,7 +80,6 @@ export function MarkdownContent({
 }
 
 function MediaImage({ src, alt }: { src?: string; alt?: string }) {
-  const compact = useContext(CompactContext);
   const { url, error, loading } = useSignedUrl(src);
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -130,16 +129,14 @@ function MediaImage({ src, alt }: { src?: string; alt?: string }) {
           e.stopPropagation();
           setOpen(true);
         }}
-        className="my-2 block w-fit max-w-full cursor-zoom-in rounded-xl border-0 bg-transparent p-0 text-left"
+        className="my-2 block max-h-[600px] w-full max-w-full cursor-zoom-in overflow-hidden rounded-xl border border-[var(--border)] bg-transparent p-0 text-left"
         aria-label={alt ? `View larger: ${alt}` : "View larger image"}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={url}
           alt={alt ?? ""}
-          className={`max-w-full rounded-xl border border-[var(--border)] object-contain ${
-            compact ? "max-h-36" : "max-h-72"
-          }`}
+          className="block h-auto w-full max-w-full"
         />
       </button>
 

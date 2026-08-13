@@ -22,6 +22,7 @@ import { useCaptureDraft } from "@/components/capture/captureDraftStore";
 import { useToast } from "@/components/ui/Toast";
 import type { Capture } from "@/lib/database.types";
 import { playUiSound } from "@/lib/sounds/play";
+import { NoteWindow } from "@/components/capture/NoteWindow";
 
 type Visibility = "private" | "public";
 type NotesRange = "today" | "7d" | "30d" | "90d" | "all";
@@ -326,9 +327,9 @@ export function QuickCapture({ userId }: { userId: string }) {
         onFilesSelected={onFilesSelected}
       />
 
-      <div className="mt-4 flex items-center gap-2 font-[family-name:var(--font-body)] text-sm font-normal">
+      <div className="mt-4 flex h-10 items-center gap-2 font-[family-name:var(--font-body)] text-sm font-normal">
         {searchOpen || search ? (
-          <label className="relative min-w-0 flex-1">
+          <label className="relative min-w-0 flex-1 self-stretch">
             <span className="sr-only">Search notes</span>
             <input
               type="search"
@@ -348,7 +349,7 @@ export function QuickCapture({ userId }: { userId: string }) {
                 if (!search.trim()) setSearchOpen(false);
               }}
               placeholder="Search notes…"
-              className="w-full rounded-full border border-[var(--border)] bg-[var(--surface)] px-3.5 py-2 text-sm text-[var(--ink)] outline-none placeholder:text-[var(--muted)] focus:border-[var(--ink)]"
+              className="box-border h-10 w-full rounded-full border border-[var(--border)] bg-[var(--surface)] px-3.5 text-sm leading-10 text-[var(--ink)] outline-none placeholder:text-[var(--muted)] focus:border-[var(--ink)]"
             />
           </label>
         ) : (
@@ -357,18 +358,18 @@ export function QuickCapture({ userId }: { userId: string }) {
             aria-label="Search notes"
             title="Search notes"
             onClick={() => setSearchOpen(true)}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--surface)] text-[var(--muted)] transition hover:border-[var(--ink)] hover:text-[var(--ink)]"
+            className="box-border flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--surface)] text-[var(--muted)] transition hover:border-[var(--ink)] hover:text-[var(--ink)]"
           >
             <SearchIcon />
           </button>
         )}
-        <div className="ml-auto flex shrink-0 items-center gap-2">
-          <label className="flex items-center gap-2">
+        <div className="ml-auto flex h-10 shrink-0 items-center gap-2">
+          <label className="flex h-10 items-center">
             <span className="sr-only">Notes range</span>
             <select
               value={range}
               onChange={(e) => setRange(e.target.value as NotesRange)}
-              className="rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--ink)] outline-none focus:border-[var(--ink)]"
+              className="box-border h-10 rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 text-sm leading-normal text-[var(--ink)] outline-none focus:border-[var(--ink)]"
             >
               {RANGE_OPTIONS.map((option) => (
                 <option key={option.value} value={option.value}>
@@ -384,7 +385,7 @@ export function QuickCapture({ userId }: { userId: string }) {
               exporting || !recent.data?.length || recent.isLoading
             }
             title={`Export ${rangeLabel.toLowerCase()} as Markdown`}
-            className="rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-xs font-medium text-[var(--ink)] transition hover:bg-[var(--surface-soft)] disabled:opacity-50"
+            className="box-border flex h-10 items-center rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 text-sm font-medium leading-normal text-[var(--ink)] transition hover:bg-[var(--surface-soft)] disabled:opacity-50"
           >
             {exporting ? "Exporting…" : `Export ${rangeLabel}`}
           </button>
@@ -396,7 +397,7 @@ export function QuickCapture({ userId }: { userId: string }) {
                 setRange("today");
                 setSearchOpen(false);
               }}
-              className="rounded-full px-2.5 py-2 text-xs font-medium text-[var(--muted)] transition hover:text-[var(--ink)]"
+              className="box-border flex h-10 items-center rounded-full px-2.5 text-sm font-medium leading-normal text-[var(--muted)] transition hover:text-[var(--ink)]"
             >
               Clear
             </button>
@@ -664,178 +665,159 @@ function CaptureListItem({
     };
   }, [menuOpen]);
 
+  const title = (
+    <time dateTime={stamp}>
+      {format(new Date(stamp), "MMM d · h:mm a")}
+      {edited ? " · edited" : ""}
+      {shared ? " · shared" : ""}
+    </time>
+  );
+
+  const actions = (
+    <div className="relative" ref={menuRef}>
+      <button
+        type="button"
+        onClick={() => setMenuOpen((v) => !v)}
+        aria-label="Note actions"
+        aria-haspopup="menu"
+        aria-expanded={menuOpen}
+        className="flex h-7 w-7 items-center justify-center rounded-full text-[var(--muted)] transition hover:bg-[var(--surface-soft)] hover:text-[var(--ink)]"
+      >
+        <KebabIcon />
+      </button>
+      {menuOpen ? (
+        <div
+          role="menu"
+          className="absolute right-0 top-full z-20 mt-1 min-w-[9.5rem] rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-1.5 shadow-[var(--shadow-soft)]"
+        >
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              setMenuOpen(false);
+              onStartEdit();
+            }}
+            className="block w-full rounded-xl px-3 py-2 text-left text-xs font-medium text-[var(--ink)] transition hover:bg-[var(--surface-soft)]"
+          >
+            Edit
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              setMenuOpen(false);
+              onDownload();
+            }}
+            disabled={downloading}
+            className="block w-full rounded-xl px-3 py-2 text-left text-xs font-medium text-[var(--ink)] transition hover:bg-[var(--surface-soft)] disabled:opacity-50"
+          >
+            Download
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              setMenuOpen(false);
+              onShare();
+            }}
+            disabled={sharing}
+            className="block w-full rounded-xl px-3 py-2 text-left text-xs font-medium text-[var(--ink)] transition hover:bg-[var(--surface-soft)] disabled:opacity-50"
+          >
+            {shared ? "Copy link" : "Share"}
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              setMenuOpen(false);
+              onDelete();
+            }}
+            disabled={deleting}
+            className="block w-full rounded-xl px-3 py-2 text-left text-xs font-medium text-[var(--ink)] transition hover:bg-[var(--surface-soft)] disabled:opacity-50"
+          >
+            Delete
+          </button>
+        </div>
+      ) : null}
+    </div>
+  );
+
   if (editing) {
     return (
-      <li className="border-b border-[var(--border)]/70 pb-3 last:border-0 last:pb-0">
-        <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-3">
-          <div className="mb-2 flex flex-wrap items-center justify-end gap-3 font-[family-name:var(--font-body)] text-sm font-normal">
-            <time className="text-xs text-[var(--muted)]">
-              {format(new Date(stamp), "MMM d · h:mm a")}
-              {edited ? " · edited" : ""}
-            </time>
+      <NoteWindow as="li" title={title} actions={actions}>
+        <textarea
+          value={draft}
+          onChange={(e) => {
+            setDraft(e.target.value);
+            bumpDocumentEdit();
+          }}
+          onKeyDown={(e) => {
+            if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+              e.preventDefault();
+              const trimmed = draft.trim();
+              if (trimmed) onSave(trimmed);
+            }
+            if (e.key === "Escape") onCancelEdit();
+          }}
+          rows={5}
+          className="w-full resize-y bg-transparent font-[family-name:var(--font-body)] text-[length:var(--note-fs-body)] outline-none"
+          autoFocus
+        />
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 font-[family-name:var(--font-body)] text-[length:var(--note-fs-small)] font-normal">
+          <div className="flex items-center gap-2">
+            <input
+              ref={editFileRef}
+              type="file"
+              accept="image/*,video/*,audio/*,application/pdf"
+              multiple
+              className="hidden"
+              onChange={(e) => onAddMedia(e.target.files, setDraft)}
+            />
+            <button
+              type="button"
+              onClick={() => editFileRef.current?.click()}
+              disabled={uploading || saving}
+              className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] px-3 py-1.5 font-medium disabled:opacity-50"
+            >
+              <PaperclipIcon />
+              {uploading ? "Uploading…" : "Add media"}
+            </button>
           </div>
-
-          <textarea
-            value={draft}
-            onChange={(e) => {
-              setDraft(e.target.value);
-              bumpDocumentEdit();
-            }}
-            onKeyDown={(e) => {
-              if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
-                e.preventDefault();
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={onCancelEdit}
+              disabled={saving}
+              className="rounded-full px-3 py-1.5 font-medium text-[var(--muted)] hover:text-[var(--ink)]"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={() => {
                 const trimmed = draft.trim();
                 if (trimmed) onSave(trimmed);
-              }
-              if (e.key === "Escape") onCancelEdit();
-            }}
-            rows={5}
-            className="w-full resize-y bg-transparent font-[family-name:var(--font-body)] outline-none"
-            autoFocus
-          />
-
-          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 font-[family-name:var(--font-body)] text-sm font-normal">
-            <div className="flex items-center gap-2">
-              <input
-                ref={editFileRef}
-                type="file"
-                accept="image/*,video/*,audio/*,application/pdf"
-                multiple
-                className="hidden"
-                onChange={(e) => onAddMedia(e.target.files, setDraft)}
-              />
-              <button
-                type="button"
-                onClick={() => editFileRef.current?.click()}
-                disabled={uploading || saving}
-                className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] px-3 py-1.5 text-xs font-medium disabled:opacity-50"
-              >
-                <PaperclipIcon />
-                {uploading ? "Uploading…" : "Add media"}
-              </button>
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={onCancelEdit}
-                disabled={saving}
-                className="rounded-full px-3 py-1.5 text-xs font-medium text-[var(--muted)] hover:text-[var(--ink)]"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  const trimmed = draft.trim();
-                  if (trimmed) onSave(trimmed);
-                }}
-                disabled={saving || uploading || !draft.trim()}
-                className="rounded-full bg-[var(--ink)] px-3 py-1.5 text-xs font-medium text-[var(--canvas)] disabled:opacity-50"
-              >
-                {saving ? "Saving…" : "Save"}
-              </button>
-            </div>
+              }}
+              disabled={saving || uploading || !draft.trim()}
+              className="rounded-full bg-[var(--ink)] px-3 py-1.5 font-medium text-[var(--canvas)] disabled:opacity-50"
+            >
+              {saving ? "Saving…" : "Save"}
+            </button>
           </div>
         </div>
-      </li>
+      </NoteWindow>
     );
   }
 
   return (
-    <li className="group flex flex-col gap-2 border-t border-[var(--border)] py-4">
-      <div className="flex w-full shrink-0 items-center justify-between gap-3 font-[family-name:var(--font-body)] text-sm font-normal">
-        <time className="text-xs text-[var(--muted)]">
-          {format(new Date(stamp), "MMM d · h:mm a")}
-          {edited ? " · edited" : ""}
-          {shared ? " · shared" : ""}
-        </time>
-        <div className="relative" ref={menuRef}>
-          <button
-            type="button"
-            onClick={() => setMenuOpen((v) => !v)}
-            aria-label="Note actions"
-            aria-haspopup="menu"
-            aria-expanded={menuOpen}
-            className="flex h-8 w-8 items-center justify-center rounded-full text-[var(--muted)] transition hover:bg-[var(--surface-soft)] hover:text-[var(--ink)]"
-          >
-            <KebabIcon />
-          </button>
-          {menuOpen ? (
-            <div
-              role="menu"
-              className="absolute right-0 top-full z-20 mt-1 min-w-[9.5rem] rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-1.5 shadow-[var(--shadow-soft)]"
-            >
-              <button
-                type="button"
-                role="menuitem"
-                onClick={() => {
-                  setMenuOpen(false);
-                  onStartEdit();
-                }}
-                className="block w-full rounded-xl px-3 py-2 text-left text-xs font-medium text-[var(--ink)] transition hover:bg-[var(--surface-soft)]"
-              >
-                Edit
-              </button>
-              <button
-                type="button"
-                role="menuitem"
-                onClick={() => {
-                  setMenuOpen(false);
-                  onDownload();
-                }}
-                disabled={downloading}
-                className="block w-full rounded-xl px-3 py-2 text-left text-xs font-medium text-[var(--ink)] transition hover:bg-[var(--surface-soft)] disabled:opacity-50"
-              >
-                Download
-              </button>
-              <button
-                type="button"
-                role="menuitem"
-                onClick={() => {
-                  setMenuOpen(false);
-                  onShare();
-                }}
-                disabled={sharing}
-                className="block w-full rounded-xl px-3 py-2 text-left text-xs font-medium text-[var(--ink)] transition hover:bg-[var(--surface-soft)] disabled:opacity-50"
-              >
-                {shared ? "Copy link" : "Share"}
-              </button>
-              <button
-                type="button"
-                role="menuitem"
-                onClick={() => {
-                  setMenuOpen(false);
-                  onDelete();
-                }}
-                disabled={deleting}
-                className="block w-full rounded-xl px-3 py-2 text-left text-xs font-medium text-[var(--ink)] transition hover:bg-[var(--surface-soft)] disabled:opacity-50"
-              >
-                Delete
-              </button>
-            </div>
-          ) : null}
-        </div>
-      </div>
-      <div
-        role="button"
-        tabIndex={0}
-        onClick={(e) => {
-          const target = e.target as HTMLElement;
-          if (target.closest("button, a, video, audio")) return;
-          onStartEdit();
-        }}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            onStartEdit();
-          }
-        }}
-        className="markdown-body min-w-0 w-full cursor-pointer rounded-xl text-left text-[var(--ink)] outline-none transition hover:bg-[var(--surface-soft)]/70 focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
-        title="Edit note"
-      >
-        <MarkdownContent content={item.content} compact />
-      </div>
-    </li>
+    <NoteWindow
+      as="li"
+      title={title}
+      actions={actions}
+      onBodyClick={onStartEdit}
+    >
+      <MarkdownContent content={item.content} compact />
+    </NoteWindow>
   );
 }
 

@@ -20,6 +20,9 @@ export function PanelChrome({
   children: React.ReactNode;
 }) {
   const meta = PANEL_META[panelType];
+  const actionsVisible = collapsible
+    ? "opacity-100"
+    : "opacity-0 group-hover:opacity-100";
 
   return (
     <div
@@ -34,11 +37,7 @@ export function PanelChrome({
             <button
               type="button"
               onClick={onRemove}
-              className={`panel-close-box panel-chrome-btn shrink-0 rounded-full px-2 py-1 text-xs text-[var(--muted)] transition hover:bg-[var(--surface-soft)] hover:text-[var(--danger)] ${
-                collapsible
-                  ? "opacity-100"
-                  : "opacity-0 group-hover:opacity-100"
-              }`}
+              className="panel-close-box panel-close-leading panel-chrome-btn shrink-0"
               aria-label={`Remove ${meta.label}`}
             >
               <span className="panel-close-box-label">Remove</span>
@@ -62,22 +61,30 @@ export function PanelChrome({
             </h3>
           )}
         </div>
-        {onConfigure ? (
+        {onConfigure || onRemove ? (
           <div
-            className={`panel-title-actions relative z-[1] flex shrink-0 items-center gap-1 transition ${
-              collapsible
-                ? "opacity-100"
-                : "opacity-0 group-hover:opacity-100"
-            }`}
+            className={`panel-title-actions relative z-[1] flex shrink-0 items-center gap-1 transition ${actionsVisible}`}
           >
-            <button
-              type="button"
-              onClick={onConfigure}
-              className="panel-settings-btn panel-chrome-btn rounded-full px-2 py-1 text-xs text-[var(--muted)] hover:bg-[var(--surface-soft)] hover:text-[var(--ink)]"
-              aria-label={`Configure ${meta.label}`}
-            >
-              Settings
-            </button>
+            {onRemove ? (
+              <button
+                type="button"
+                onClick={onRemove}
+                className="panel-close-box panel-close-inline panel-chrome-btn rounded-full px-2 py-1 text-xs text-[var(--muted)] transition hover:bg-[var(--surface-soft)] hover:text-[var(--danger)]"
+                aria-label={`Remove ${meta.label}`}
+              >
+                <span className="panel-close-box-label">Remove</span>
+              </button>
+            ) : null}
+            {onConfigure ? (
+              <button
+                type="button"
+                onClick={onConfigure}
+                className="panel-settings-btn panel-chrome-btn rounded-full px-2 py-1 text-xs text-[var(--muted)] hover:bg-[var(--surface-soft)] hover:text-[var(--ink)]"
+                aria-label={`Configure ${meta.label}`}
+              >
+                Settings
+              </button>
+            ) : null}
           </div>
         ) : null}
       </div>

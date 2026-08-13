@@ -5,6 +5,7 @@ import { formatPostDateTitle } from "@/lib/blog/dayRange";
 import { parseNotesSnapshot } from "@/lib/blog/notesSnapshot";
 import { GhostWriterLogo } from "@/components/brand/GhostWriterLogo";
 import { MarkdownContent } from "@/components/markdown/MarkdownContent";
+import { NoteWindow } from "@/components/capture/NoteWindow";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -52,16 +53,19 @@ export default async function PublicBlogPostPage({
       {notes.length > 0 ? (
         <section className="mt-12 border-t border-[var(--border)] pt-8">
           <h2 className="mb-4 text-sm font-semibold tracking-tight">Notes</h2>
-          <ul className="notes-hand space-y-6">
+          <ul className="space-y-3">
             {notes.map((note) => (
-              <li key={note.id}>
-                <time className="mb-2 block font-[family-name:var(--font-body)] text-xs font-normal text-[var(--muted)]">
-                  {format(new Date(note.created_at), "h:mm a")}
-                </time>
-                <div className="markdown-body">
-                  <MarkdownContent content={note.content} />
-                </div>
-              </li>
+              <NoteWindow
+                key={note.id}
+                as="li"
+                title={
+                  <time dateTime={note.created_at}>
+                    {format(new Date(note.created_at), "h:mm a")}
+                  </time>
+                }
+              >
+                <MarkdownContent content={note.content} />
+              </NoteWindow>
             ))}
           </ul>
         </section>
