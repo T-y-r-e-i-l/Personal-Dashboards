@@ -80,13 +80,20 @@ export function MobileFinderNav({
         ) : null}
       </nav>
 
-      <div className="mt-auto space-y-2 border-t border-black px-4 py-3">
+      <div className="mt-auto flex items-center justify-between gap-3 border-t border-black px-4 py-3">
         {email ? (
-          <p className="truncate text-xs text-[var(--muted)]" title={email}>
+          <p
+            className="min-w-0 flex-1 truncate text-xs text-[var(--muted)]"
+            title={email}
+          >
             {email}
           </p>
-        ) : null}
-        <SignOutButton />
+        ) : (
+          <span />
+        )}
+        <div className="shrink-0 [&>button]:mt-0">
+          <SignOutButton />
+        </div>
       </div>
     </div>
   );
