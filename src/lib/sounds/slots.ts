@@ -1,6 +1,7 @@
 export const SOUND_SLOTS = [
   "generic_click",
   "todo_complete",
+  "todo_uncomplete",
   "timer_start",
   "timer_end",
   "panel_swap",
@@ -34,6 +35,11 @@ export const SOUND_SLOT_CATALOG: SoundSlotMeta[] = [
     id: "todo_complete",
     label: "To-do complete",
     description: "Marking a task as done.",
+  },
+  {
+    id: "todo_uncomplete",
+    label: "To-do unmark",
+    description: "Unchecking a completed task.",
   },
   {
     id: "timer_start",

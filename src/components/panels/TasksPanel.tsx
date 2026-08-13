@@ -166,8 +166,8 @@ export function TasksPanel({
     },
     onSuccess: async (result) => {
       await queryClient.invalidateQueries({ queryKey: ["tasks", userId] });
+      playUiSound(result.completed ? "todo_complete" : "todo_uncomplete");
       if (result.completed) {
-        playUiSound("todo_complete");
         await queryClient.invalidateQueries({
           queryKey: ["captures", userId],
         });
