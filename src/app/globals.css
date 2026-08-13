@@ -350,8 +350,7 @@ body {
     0 2px,
     2px -2px,
     -2px 0;
-  font-family: var(--font-retro), Geneva, Verdana, sans-serif;
-  image-rendering: pixelated;
+  font-family: var(--font-retro), ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
 [data-theme="retro"] ::selection {
@@ -679,7 +678,7 @@ body {
 }
 
 [data-theme="retro"] .mobile-finder-label {
-  font-family: var(--font-retro), Geneva, Verdana, sans-serif;
+  font-family: var(--font-retro), ui-monospace, SFMono-Regular, Menlo, monospace;
   font-weight: 700;
 }
 
@@ -691,7 +690,7 @@ body {
 
 [data-theme="retro"] [class*="font-[family-name:var(--font-display)]"],
 [data-theme="retro"] [class*="font-display"] {
-  font-family: var(--font-retro), Geneva, Verdana, sans-serif !important;
+  font-family: var(--font-retro), ui-monospace, SFMono-Regular, Menlo, monospace !important;
   letter-spacing: 0;
 }
 
@@ -699,5 +698,5 @@ body {
 [data-theme="retro"] .notes-hand .markdown-body h1,
 [data-theme="retro"] .notes-hand .markdown-body h2,
 [data-theme="retro"] .notes-hand .markdown-body h3 {
-  font-family: var(--font-retro), Geneva, Verdana, sans-serif;
+  font-family: var(--font-retro), ui-monospace, SFMono-Regular, Menlo, monospace;
 }

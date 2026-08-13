@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Fraunces, DM_Sans, Caveat, Pixelify_Sans } from "next/font/google";
+import { Fraunces, DM_Sans, Caveat, Space_Mono } from "next/font/google";
 import { QueryProvider } from "@/components/providers/QueryProvider";
 import { ToastHost } from "@/components/ui/Toast";
 import "./globals.css";
@@ -22,11 +22,11 @@ const notes = Caveat({
   weight: ["400", "500", "600", "700"],
 });
 
-/** Chicago-like bitmap UI face for Retro Style theme. */
-const retro = Pixelify_Sans({
+/** Monospace UI face for Retro Style theme. */
+const retro = Space_Mono({
   variable: "--font-retro",
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+  weight: ["400", "700"],
 });
 
 function appOrigin() {
