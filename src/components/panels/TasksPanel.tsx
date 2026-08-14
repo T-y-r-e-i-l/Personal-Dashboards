@@ -414,232 +414,256 @@ export function TasksPanel({
     );
   }
 
+  const referenceDate = date ?? format(new Date(), "yyyy-MM-dd");
+  const dueTodayItems = items.filter(
+    (task) => task.due_date != null && task.due_date <= referenceDate,
+  );
+  const laterItems = items.filter(
+    (task) => task.due_date == null || task.due_date > referenceDate,
+  );
+
   const activeTaskId = running.data?.task_id ?? null;
+
+  function renderTaskItem(task: (typeof items)[number]) {
+    const isRunning = interactive && activeTaskId === task.id;
+    const isEditing = interactive && editingId === task.id;
+
+    if (isEditing) {
+      return (
+        <li
+          key={task.id}
+          className="rounded-xl border border-[var(--border)] bg-[var(--canvas)]/60 p-2"
+        >
+          <form
+            className="space-y-2"
+            onSubmit={(e) => {
+              e.preventDefault();
+              const nextTitle = editTitle.trim();
+              if (!nextTitle) return;
+              updateTask.mutate({
+                id: task.id,
+                nextTitle,
+                nextDueDate: editDueDate,
+              });
+            }}
+          >
+            <input
+              autoFocus
+              value={editTitle}
+              onChange={(e) => setEditTitle(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") {
+                  e.preventDefault();
+                  cancelEdit();
+                }
+              }}
+              placeholder="Task title"
+              aria-label="Task title"
+              className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm outline-none"
+            />
+            <label className="block">
+              <span className="mb-1 block text-xs text-[var(--muted)]">
+                Due date
+              </span>
+              <input
+                type="date"
+                value={editDueDate}
+                onChange={(e) => setEditDueDate(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Escape") {
+                    e.preventDefault();
+                    cancelEdit();
+                  }
+                }}
+                className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm outline-none"
+              />
+            </label>
+            <div className="flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={cancelEdit}
+                disabled={updateTask.isPending}
+                className="rounded-full px-3 py-1.5 text-xs font-medium text-[var(--muted)] hover:text-[var(--ink)]"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={updateTask.isPending || !editTitle.trim()}
+                className="rounded-full bg-[var(--ink)] px-3 py-1.5 text-xs font-medium text-[var(--canvas)] disabled:opacity-50"
+              >
+                {updateTask.isPending ? "Saving…" : "Save"}
+              </button>
+            </div>
+          </form>
+        </li>
+      );
+    }
+
+    return (
+      <li
+        key={task.id}
+        className={`flex items-start gap-2 rounded-xl px-1 py-0.5 transition ${
+          isRunning ? "bg-[var(--surface-soft)]" : ""
+        }`}
+      >
+        <span className="relative mt-0.5 inline-flex h-5 w-5 shrink-0">
+          {readOnly ? (
+            <span
+              aria-hidden
+              className={`flex h-5 w-5 items-center justify-center rounded-full border ${
+                task.status === "done"
+                  ? "border-[var(--accent)] bg-[var(--accent)] text-white"
+                  : "border-[var(--border)]"
+              }`}
+            >
+              {task.status === "done" ? "✓" : ""}
+            </span>
+          ) : (
+            <button
+              type="button"
+              aria-label={
+                task.status === "done" ? "Mark incomplete" : "Complete"
+              }
+              onClick={() =>
+                toggle.mutate({
+                  id: task.id,
+                  status: task.status,
+                  title: task.title,
+                })
+              }
+              className={`flex h-5 w-5 items-center justify-center rounded-full border ${
+                task.status === "done"
+                  ? "border-[var(--accent)] bg-[var(--accent)] text-white"
+                  : "border-[var(--border)]"
+              }`}
+            >
+              {task.status === "done" ? "✓" : ""}
+            </button>
+          )}
+          {floatPopups[task.id] ? (
+            <TaskFloatLabel
+              text={floatPopups[task.id].text}
+              animKey={floatPopups[task.id].key}
+              onDone={(animKey) => {
+                setFloatPopups((prev) => {
+                  if (prev[task.id]?.key !== animKey) return prev;
+                  const next = { ...prev };
+                  delete next[task.id];
+                  return next;
+                });
+              }}
+            />
+          ) : null}
+        </span>
+        <div className="min-w-0 flex-1">
+          {interactive ? (
+            <button
+              type="button"
+              onClick={() => startEdit(task)}
+              className="w-full rounded-lg text-left outline-none transition hover:bg-[var(--surface-soft)]/70 focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+              title="Edit task"
+            >
+              <p
+                className={`text-sm ${
+                  task.status === "done"
+                    ? "text-[var(--muted)] line-through"
+                    : "text-[var(--ink)]"
+                }`}
+              >
+                {task.title}
+              </p>
+              <div className="flex flex-wrap items-center gap-2 text-xs text-[var(--muted)]">
+                {task.due_date ? (
+                  <span>{formatDueDate(task.due_date)}</span>
+                ) : (
+                  <span>No due date</span>
+                )}
+                {isRunning && running.data ? (
+                  <span className="font-mono tabular-nums text-[var(--accent)]">
+                    {formatDuration(
+                      elapsedMs(running.data.started_at, null, now),
+                    )}
+                  </span>
+                ) : null}
+              </div>
+            </button>
+          ) : (
+            <>
+              <p
+                className={`text-sm ${
+                  task.status === "done"
+                    ? "text-[var(--muted)] line-through"
+                    : "text-[var(--ink)]"
+                }`}
+              >
+                {task.title}
+              </p>
+              <div className="flex flex-wrap items-center gap-2 text-xs text-[var(--muted)]">
+                {task.due_date ? (
+                  <span>{formatDueDate(task.due_date)}</span>
+                ) : null}
+              </div>
+            </>
+          )}
+        </div>
+        {interactive && task.status !== "done" ? (
+          <button
+            type="button"
+            aria-label={isRunning ? "Stop timer" : "Start timer"}
+            title={isRunning ? "Stop timer" : "Start timer"}
+            disabled={timer.isPending}
+            onClick={() =>
+              timer.mutate({
+                taskId: task.id,
+                taskTitle: task.title,
+                action: isRunning ? "stop" : "start",
+              })
+            }
+            className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border transition disabled:opacity-50 ${
+              isRunning
+                ? "border-[var(--ink)] bg-[var(--ink)] text-[var(--canvas)]"
+                : "border-[var(--border)] text-[var(--muted)] hover:text-[var(--ink)]"
+            }`}
+          >
+            {isRunning ? <StopIcon /> : <PlayIcon />}
+          </button>
+        ) : null}
+        {interactive && task.status === "done" ? (
+          <button
+            type="button"
+            aria-label="Archive task"
+            title="Archive"
+            disabled={archiveTask.isPending}
+            onClick={() => archiveTask.mutate(task.id)}
+            className="mt-0.5 shrink-0 rounded-full px-2 py-1 text-xs font-medium text-[var(--muted)] transition hover:bg-[var(--surface-soft)] hover:text-[var(--ink)] disabled:opacity-50"
+          >
+            Archive
+          </button>
+        ) : null}
+      </li>
+    );
+  }
 
   return (
     <div className="space-y-3">
-      <ul className="space-y-2">
-        {items.map((task) => {
-          const isRunning = interactive && activeTaskId === task.id;
-          const isEditing = interactive && editingId === task.id;
+      {dueTodayItems.length > 0 ? (
+        <section className="space-y-2">
+          <h3 className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
+            Due today
+          </h3>
+          <ul className="space-y-2">{dueTodayItems.map(renderTaskItem)}</ul>
+        </section>
+      ) : null}
 
-          if (isEditing) {
-            return (
-              <li
-                key={task.id}
-                className="rounded-xl border border-[var(--border)] bg-[var(--canvas)]/60 p-2"
-              >
-                <form
-                  className="space-y-2"
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    const nextTitle = editTitle.trim();
-                    if (!nextTitle) return;
-                    updateTask.mutate({
-                      id: task.id,
-                      nextTitle,
-                      nextDueDate: editDueDate,
-                    });
-                  }}
-                >
-                  <input
-                    autoFocus
-                    value={editTitle}
-                    onChange={(e) => setEditTitle(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Escape") {
-                        e.preventDefault();
-                        cancelEdit();
-                      }
-                    }}
-                    placeholder="Task title"
-                    aria-label="Task title"
-                    className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm outline-none"
-                  />
-                  <label className="block">
-                    <span className="mb-1 block text-xs text-[var(--muted)]">
-                      Due date
-                    </span>
-                    <input
-                      type="date"
-                      value={editDueDate}
-                      onChange={(e) => setEditDueDate(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Escape") {
-                          e.preventDefault();
-                          cancelEdit();
-                        }
-                      }}
-                      className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm outline-none"
-                    />
-                  </label>
-                  <div className="flex items-center justify-end gap-2">
-                    <button
-                      type="button"
-                      onClick={cancelEdit}
-                      disabled={updateTask.isPending}
-                      className="rounded-full px-3 py-1.5 text-xs font-medium text-[var(--muted)] hover:text-[var(--ink)]"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={updateTask.isPending || !editTitle.trim()}
-                      className="rounded-full bg-[var(--ink)] px-3 py-1.5 text-xs font-medium text-[var(--canvas)] disabled:opacity-50"
-                    >
-                      {updateTask.isPending ? "Saving…" : "Save"}
-                    </button>
-                  </div>
-                </form>
-              </li>
-            );
-          }
-
-          return (
-            <li
-              key={task.id}
-              className={`flex items-start gap-2 rounded-xl px-1 py-0.5 transition ${
-                isRunning ? "bg-[var(--surface-soft)]" : ""
-              }`}
-            >
-              <span className="relative mt-0.5 inline-flex h-5 w-5 shrink-0">
-                {readOnly ? (
-                  <span
-                    aria-hidden
-                    className={`flex h-5 w-5 items-center justify-center rounded-full border ${
-                      task.status === "done"
-                        ? "border-[var(--accent)] bg-[var(--accent)] text-white"
-                        : "border-[var(--border)]"
-                    }`}
-                  >
-                    {task.status === "done" ? "✓" : ""}
-                  </span>
-                ) : (
-                  <button
-                    type="button"
-                    aria-label={
-                      task.status === "done" ? "Mark incomplete" : "Complete"
-                    }
-                    onClick={() =>
-                      toggle.mutate({
-                        id: task.id,
-                        status: task.status,
-                        title: task.title,
-                      })
-                    }
-                    className={`flex h-5 w-5 items-center justify-center rounded-full border ${
-                      task.status === "done"
-                        ? "border-[var(--accent)] bg-[var(--accent)] text-white"
-                        : "border-[var(--border)]"
-                    }`}
-                  >
-                    {task.status === "done" ? "✓" : ""}
-                  </button>
-                )}
-                {floatPopups[task.id] ? (
-                  <TaskFloatLabel
-                    text={floatPopups[task.id].text}
-                    animKey={floatPopups[task.id].key}
-                    onDone={(animKey) => {
-                      setFloatPopups((prev) => {
-                        if (prev[task.id]?.key !== animKey) return prev;
-                        const next = { ...prev };
-                        delete next[task.id];
-                        return next;
-                      });
-                    }}
-                  />
-                ) : null}
-              </span>
-              <div className="min-w-0 flex-1">
-                {interactive ? (
-                  <button
-                    type="button"
-                    onClick={() => startEdit(task)}
-                    className="w-full rounded-lg text-left outline-none transition hover:bg-[var(--surface-soft)]/70 focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
-                    title="Edit task"
-                  >
-                    <p
-                      className={`text-sm ${
-                        task.status === "done"
-                          ? "text-[var(--muted)] line-through"
-                          : "text-[var(--ink)]"
-                      }`}
-                    >
-                      {task.title}
-                    </p>
-                    <div className="flex flex-wrap items-center gap-2 text-xs text-[var(--muted)]">
-                      {task.due_date ? (
-                        <span>{formatDueDate(task.due_date)}</span>
-                      ) : (
-                        <span>No due date</span>
-                      )}
-                      {isRunning && running.data ? (
-                        <span className="font-mono tabular-nums text-[var(--accent)]">
-                          {formatDuration(
-                            elapsedMs(running.data.started_at, null, now),
-                          )}
-                        </span>
-                      ) : null}
-                    </div>
-                  </button>
-                ) : (
-                  <>
-                    <p
-                      className={`text-sm ${
-                        task.status === "done"
-                          ? "text-[var(--muted)] line-through"
-                          : "text-[var(--ink)]"
-                      }`}
-                    >
-                      {task.title}
-                    </p>
-                    <div className="flex flex-wrap items-center gap-2 text-xs text-[var(--muted)]">
-                      {task.due_date ? (
-                        <span>{formatDueDate(task.due_date)}</span>
-                      ) : null}
-                    </div>
-                  </>
-                )}
-              </div>
-              {interactive && task.status !== "done" ? (
-                <button
-                  type="button"
-                  aria-label={isRunning ? "Stop timer" : "Start timer"}
-                  title={isRunning ? "Stop timer" : "Start timer"}
-                  disabled={timer.isPending}
-                  onClick={() =>
-                    timer.mutate({
-                      taskId: task.id,
-                      taskTitle: task.title,
-                      action: isRunning ? "stop" : "start",
-                    })
-                  }
-                  className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border transition disabled:opacity-50 ${
-                    isRunning
-                      ? "border-[var(--ink)] bg-[var(--ink)] text-[var(--canvas)]"
-                      : "border-[var(--border)] text-[var(--muted)] hover:text-[var(--ink)]"
-                  }`}
-                >
-                  {isRunning ? <StopIcon /> : <PlayIcon />}
-                </button>
-              ) : null}
-              {interactive && task.status === "done" ? (
-                <button
-                  type="button"
-                  aria-label="Archive task"
-                  title="Archive"
-                  disabled={archiveTask.isPending}
-                  onClick={() => archiveTask.mutate(task.id)}
-                  className="mt-0.5 shrink-0 rounded-full px-2 py-1 text-xs font-medium text-[var(--muted)] transition hover:bg-[var(--surface-soft)] hover:text-[var(--ink)] disabled:opacity-50"
-                >
-                  Archive
-                </button>
-              ) : null}
-            </li>
-          );
-        })}
-      </ul>
+      {laterItems.length > 0 ? (
+        <section className="space-y-2">
+          <h3 className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
+            Later
+          </h3>
+          <ul className="space-y-2">{laterItems.map(renderTaskItem)}</ul>
+        </section>
+      ) : null}
 
       {interactive && adding ? (
         <form
