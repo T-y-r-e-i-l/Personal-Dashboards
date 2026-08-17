@@ -58,6 +58,34 @@ export async function fetchLatestSelfie(
   return (data as DailySelfie | null) ?? null;
 }
 
+/**
+ * Most recent selfie taken strictly before `beforeDate` (a yyyy-MM-dd string).
+ * Used for the capture onion-skin so it falls back to the last selfie on file
+ * even when yesterday (or several days) were missed.
+ */
+export async function fetchLatestSelfieBefore(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: SupabaseClient<any>,
+  userId: string,
+  beforeDate: string,
+): Promise<DailySelfie | null> {
+  const { data, error } = await supabase
+    .from("daily_selfies")
+    .select("*")
+    .eq("user_id", userId)
+    .lt("selfie_date", beforeDate)
+    .order("selfie_date", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) {
+    if (/column|schema cache|relation|does not exist/i.test(error.message)) {
+      return null;
+    }
+    throw error;
+  }
+  return (data as DailySelfie | null) ?? null;
+}
+
 export async function resolveSelfieUrl(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   supabase: SupabaseClient<any>,

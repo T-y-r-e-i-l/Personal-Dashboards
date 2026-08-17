@@ -5,11 +5,10 @@ import { createPortal } from "react-dom";
 import { createClient } from "@/lib/supabase/client";
 import { optimizeSelfieFromVideo } from "@/lib/selfie/optimize";
 import {
-  previousSelfieDate,
   resolveSelfieUrl,
   todaySelfieDate,
   upsertDailySelfie,
-  fetchSelfieForDate,
+  fetchLatestSelfieBefore,
 } from "@/lib/selfie/storage";
 import { useToast } from "@/components/ui/Toast";
 
@@ -53,8 +52,8 @@ export function SelfieCaptureModal({
     async function start() {
       try {
         const supabase = createClient();
-        const prevDate = previousSelfieDate(timeZone);
-        const prev = await fetchSelfieForDate(supabase, userId, prevDate);
+        const today = todaySelfieDate(timeZone);
+        const prev = await fetchLatestSelfieBefore(supabase, userId, today);
         if (prev && !cancelled) {
           const url = await resolveSelfieUrl(supabase, prev.storage_path);
           if (!cancelled) setOnionUrl(url);
@@ -215,7 +214,7 @@ export function SelfieCaptureModal({
               Daily selfie
             </h2>
             <p className="mt-1 text-sm text-[var(--muted)]">
-              Align with yesterday’s ghost, then capture.
+              Align with your last selfie’s ghost, then capture.
             </p>
           </div>
           <button
