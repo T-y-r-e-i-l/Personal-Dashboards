@@ -19,6 +19,7 @@ import {
 import { uploadNoteMedia } from "@/lib/media/noteMedia";
 import { MarkdownContent } from "@/components/markdown/MarkdownContent";
 import { useCaptureDraft } from "@/components/capture/captureDraftStore";
+import { ExportNotesModal } from "@/components/capture/ExportNotesModal";
 import { useToast } from "@/components/ui/Toast";
 import type { Capture } from "@/lib/database.types";
 import { playUiSound } from "@/lib/sounds/play";
@@ -76,6 +77,9 @@ export function QuickCapture({ userId }: { userId: string }) {
   const [search, setSearch] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
+  const [selectMode, setSelectMode] = useState(false);
+  const [selected, setSelected] = useState<Map<string, Capture>>(new Map());
   const deferredSearch = useDeferredValue(search.trim());
   const showToast = useToast((s) => s.show);
   const queryClient = useQueryClient();
@@ -288,14 +292,47 @@ export function QuickCapture({ userId }: { userId: string }) {
     }
   }
 
-  async function onExportVisible() {
+  function toggleSelected(item: Capture) {
+    setSelected((prev) => {
+      const next = new Map(prev);
+      if (next.has(item.id)) {
+        next.delete(item.id);
+      } else {
+        next.set(item.id, item);
+      }
+      return next;
+    });
+  }
+
+  function exitSelectMode() {
+    setSelectMode(false);
+    setSelected(new Map());
+  }
+
+  function selectAllVisible() {
     const notes = recent.data ?? [];
+    setSelected((prev) => {
+      const next = new Map(prev);
+      for (const note of notes) next.set(note.id, note);
+      return next;
+    });
+  }
+
+  async function onExportSelected() {
+    const notes = [...selected.values()].sort((a, b) =>
+      a.created_at.localeCompare(b.created_at),
+    );
     if (!notes.length || exporting) return;
     setExporting(true);
     try {
-      const result = await exportCapturesBulk(supabase, notes);
+      const result = await exportCapturesBulk(
+        supabase,
+        notes,
+        `ghost-writer-notes-selected-${format(new Date(), "yyyy-MM-dd")}`,
+      );
       downloadExport(result);
       showToast(`Exported ${notes.length} note${notes.length === 1 ? "" : "s"}`);
+      exitSelectMode();
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Export failed");
     } finally {
@@ -380,14 +417,24 @@ export function QuickCapture({ userId }: { userId: string }) {
           </label>
           <button
             type="button"
-            onClick={() => void onExportVisible()}
-            disabled={
-              exporting || !recent.data?.length || recent.isLoading
-            }
-            title={`Export ${rangeLabel.toLowerCase()} as Markdown`}
-            className="box-border flex h-10 items-center rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 text-sm font-medium leading-normal text-[var(--ink)] transition hover:bg-[var(--surface-soft)] disabled:opacity-50"
+            onClick={() => (selectMode ? exitSelectMode() : setSelectMode(true))}
+            aria-pressed={selectMode}
+            title="Select notes to export"
+            className={`box-border flex h-10 items-center rounded-full border px-3 text-sm font-medium leading-normal transition ${
+              selectMode
+                ? "border-[var(--ink)] bg-[var(--surface-soft)] text-[var(--ink)]"
+                : "border-[var(--border)] bg-[var(--surface)] text-[var(--ink)] hover:bg-[var(--surface-soft)]"
+            }`}
           >
-            {exporting ? "Exporting…" : `Export ${rangeLabel}`}
+            {selectMode ? "Done" : "Select"}
+          </button>
+          <button
+            type="button"
+            onClick={() => setExportOpen(true)}
+            title="Export notes as Markdown"
+            className="box-border flex h-10 items-center rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 text-sm font-medium leading-normal text-[var(--ink)] transition hover:bg-[var(--surface-soft)]"
+          >
+            Export…
           </button>
           {search || range !== "today" ? (
             <button
@@ -405,6 +452,41 @@ export function QuickCapture({ userId }: { userId: string }) {
         </div>
       </div>
 
+      {selectMode ? (
+        <div className="mt-3 flex flex-wrap items-center gap-2 rounded-2xl border border-[var(--border)] bg-[var(--surface-soft)] px-3.5 py-2.5 font-[family-name:var(--font-body)] text-sm">
+          <span className="font-medium text-[var(--ink)]">
+            {selected.size} selected
+          </span>
+          <button
+            type="button"
+            onClick={selectAllVisible}
+            disabled={!recent.data?.length}
+            className="rounded-full px-2.5 py-1 font-medium text-[var(--muted)] transition hover:text-[var(--ink)] disabled:opacity-50"
+          >
+            Select all
+          </button>
+          {selected.size > 0 ? (
+            <button
+              type="button"
+              onClick={() => setSelected(new Map())}
+              className="rounded-full px-2.5 py-1 font-medium text-[var(--muted)] transition hover:text-[var(--ink)]"
+            >
+              Clear
+            </button>
+          ) : null}
+          <button
+            type="button"
+            onClick={() => void onExportSelected()}
+            disabled={exporting || selected.size === 0}
+            className="ml-auto rounded-full bg-[var(--ink)] px-3.5 py-1.5 font-medium text-[var(--canvas)] transition disabled:opacity-50"
+          >
+            {exporting
+              ? "Exporting…"
+              : `Export selected${selected.size ? ` (${selected.size})` : ""}`}
+          </button>
+        </div>
+      ) : null}
+
       {recent.isLoading ? (
         <p className="mt-4 font-[family-name:var(--font-body)] text-sm text-[var(--muted)]">
           Loading notes…
@@ -421,6 +503,9 @@ export function QuickCapture({ userId }: { userId: string }) {
               sharing={shareCapture.isPending}
               deleting={deleteCapture.isPending}
               downloading={exporting}
+              selectable={selectMode}
+              selected={selected.has(item.id)}
+              onToggleSelect={() => toggleSelected(item)}
               onStartEdit={() => setEditingId(item.id)}
               onCancelEdit={() => setEditingId(null)}
               onSave={(text) =>
@@ -453,6 +538,15 @@ export function QuickCapture({ userId }: { userId: string }) {
               : "No notes in this range."}
         </p>
       )}
+
+      {exportOpen ? (
+        <ExportNotesModal
+          userId={userId}
+          currentViewNotes={recent.data ?? []}
+          currentViewLabel={rangeLabel}
+          onClose={() => setExportOpen(false)}
+        />
+      ) : null}
     </section>
   );
 }
@@ -603,6 +697,9 @@ function CaptureListItem({
   sharing,
   deleting,
   downloading,
+  selectable = false,
+  selected = false,
+  onToggleSelect,
   onStartEdit,
   onCancelEdit,
   onSave,
@@ -618,6 +715,9 @@ function CaptureListItem({
   sharing: boolean;
   deleting: boolean;
   downloading: boolean;
+  selectable?: boolean;
+  selected?: boolean;
+  onToggleSelect?: () => void;
   onStartEdit: () => void;
   onCancelEdit: () => void;
   onSave: (text: string) => void;
@@ -665,12 +765,27 @@ function CaptureListItem({
     };
   }, [menuOpen]);
 
-  const title = (
+  const stampLabel = (
     <time dateTime={stamp}>
       {format(new Date(stamp), "MMM d · h:mm a")}
       {edited ? " · edited" : ""}
       {shared ? " · shared" : ""}
     </time>
+  );
+
+  const title = selectable ? (
+    <label className="flex cursor-pointer items-center gap-2">
+      <input
+        type="checkbox"
+        checked={selected}
+        onChange={() => onToggleSelect?.()}
+        aria-label="Select note for export"
+        className="h-4 w-4 accent-[var(--ink)]"
+      />
+      {stampLabel}
+    </label>
+  ) : (
+    stampLabel
   );
 
   const actions = (
@@ -813,8 +928,8 @@ function CaptureListItem({
     <NoteWindow
       as="li"
       title={title}
-      actions={actions}
-      onBodyClick={onStartEdit}
+      actions={selectable ? undefined : actions}
+      onBodyClick={selectable ? onToggleSelect : onStartEdit}
     >
       <MarkdownContent content={item.content} compact />
     </NoteWindow>

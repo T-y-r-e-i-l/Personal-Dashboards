@@ -135,11 +135,25 @@ export async function exportSingleCapture(
   };
 }
 
-/** Bulk export loaded captures as notes/ + media/ ZIP. */
+/** Sanitize a caller-supplied label for use inside a zip filename. */
+function sanitizeFilenameBase(base: string): string {
+  const cleaned = base
+    .trim()
+    .replace(/[^a-zA-Z0-9._-]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+  return cleaned || `ghost-writer-notes-${format(new Date(), "yyyy-MM-dd")}`;
+}
+
+/**
+ * Bulk export loaded captures as notes/ + media/ ZIP.
+ * `filenameBase` names the archive (no extension); defaults to today's date.
+ */
 export async function exportCapturesBulk(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   supabase: SupabaseClient<any>,
   captures: Capture[],
+  filenameBase?: string,
 ): Promise<ExportDownload> {
   if (captures.length === 0) {
     throw new Error("No notes to export");
@@ -172,9 +186,11 @@ export async function exportCapturesBulk(
   }
 
   const zipped = zipSync(files);
-  const day = format(new Date(), "yyyy-MM-dd");
+  const base = filenameBase
+    ? sanitizeFilenameBase(filenameBase)
+    : `ghost-writer-notes-${format(new Date(), "yyyy-MM-dd")}`;
   return {
     blob: new Blob([zipped], { type: "application/zip" }),
-    filename: `ghost-writer-notes-${day}.zip`,
+    filename: `${base}.zip`,
   };
 }
